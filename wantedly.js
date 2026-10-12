@@ -1,8 +1,8 @@
 'use strict';
 document.documentElement.classList.add('js');
 const header=document.querySelector('.w-header'),menu=document.querySelector('.w-menu'),panel=document.querySelector('.w-menu-panel');
-function closeMenu(){if(!menu)return;panel.hidden=true;menu.setAttribute('aria-expanded','false');menu.innerHTML='<span>•</span> Menu';}
-menu?.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')==='true';panel.hidden=open;menu.setAttribute('aria-expanded',String(!open));menu.innerHTML=open?'<span>•</span> Menu':'<span>×</span> Close';});
+function closeMenu(){if(!menu)return;panel.hidden=true;menu.setAttribute('aria-expanded','false');menu.innerHTML='<span>•</span> 菜单';}
+menu?.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')==='true';panel.hidden=open;menu.setAttribute('aria-expanded',String(!open));menu.innerHTML=open?'<span>•</span> 菜单':'<span>×</span> 关闭';});
 panel?.addEventListener('click',e=>{if(e.target.closest('a'))closeMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();menu?.focus();}});
 document.addEventListener('click',e=>{if(panel&&!panel.hidden&&!header.contains(e.target)&&!panel.contains(e.target))closeMenu();});
