@@ -11,3 +11,4 @@
 
 /* Keep the guest face in the wide episode-one thumbnail. */
 .w-card img[src*=ep1-image-02],.w-card img[src*=ep2-image-02],.podcast-home-card img[src*=ep1-image-02],.podcast-home-card img[src*=ep2-image-02]{object-position:50% 12%}
+.w-card img[src*=ep1-image-02],.w-card img[src*=ep2-image-02],.podcast-home-card img[src*=ep1-image-02],.podcast-home-card img[src*=ep2-image-02]{object-fit:contain;object-position:center;background:#f5f5f5}
