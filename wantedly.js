@@ -6,10 +6,11 @@ menu?.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded'
 panel?.addEventListener('click',e=>{if(e.target.closest('a'))closeMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();menu?.focus();}});
 document.addEventListener('click',e=>{if(panel&&!panel.hidden&&!header.contains(e.target)&&!panel.contains(e.target))closeMenu();});
-let pending=false;
-function draw(){pending=false;const y=scrollY;header?.classList.toggle('compact',y>100);document.querySelector('.stage-0')?.classList.toggle('expanded',y>20);for(const stage of document.querySelectorAll('.w-stage')){const r=stage.getBoundingClientRect(),p=Math.max(-1,Math.min(1,r.top/innerHeight));stage.querySelector('.stage-copy').style.transform=`translateY(${p*-24}px)`;}}
+let pending=false,introDone=false;
+function draw(){pending=false;const y=scrollY;header?.classList.toggle('compact',y>100);document.querySelector('.stage-0')?.classList.toggle('expanded',y>20||introDone);for(const stage of document.querySelectorAll('.w-stage')){const r=stage.getBoundingClientRect(),p=Math.max(-1,Math.min(1,r.top/innerHeight));stage.querySelector('.stage-copy').style.transform=`translateY(${p*-24}px)`;}}
 addEventListener('scroll',()=>{if(!pending){pending=true;requestAnimationFrame(draw);}},{passive:true});draw();
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+setTimeout(()=>{introDone=true;draw();},reduced.matches?0:1600);
 if(!reduced.matches){for(const stage of document.querySelectorAll('.w-stage')){const imgs=[...stage.querySelectorAll('.stage-image')];let index=0;setInterval(()=>{if(document.hidden||stage.getBoundingClientRect().bottom<0||stage.getBoundingClientRect().top>innerHeight)return;imgs[index].classList.remove('active');index=(index+1)%imgs.length;imgs[index].classList.add('active');},6500);}}
 const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('is-visible');observer.unobserve(e.target);}}),{threshold:.16});document.querySelectorAll('[data-reveal]').forEach(e=>observer.observe(e));
 const tabs=[...document.querySelectorAll('[data-tab]')];function selectTab(button){for(const t of tabs){const active=t===button;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.dataset.tab).hidden=!active;}}
