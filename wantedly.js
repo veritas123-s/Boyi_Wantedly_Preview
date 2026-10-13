@@ -7,9 +7,13 @@ panel?.addEventListener('click',e=>{if(e.target.closest('a'))closeMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();menu?.focus();}});
 document.addEventListener('click',e=>{if(panel&&!panel.hidden&&!header.contains(e.target)&&!panel.contains(e.target))closeMenu();});
 const stages=[...document.querySelectorAll('.w-stage')],reduced=matchMedia('(prefers-reduced-motion: reduce)');
-document.querySelector('.stage-0')?.classList.add('expanded');
+const firstStage=document.querySelector('.stage-0');
+let introReady=false;
+function enterCopy(stage){if(stage===firstStage&&!introReady)return;stage.classList.add('copy-entered');}
+function startIntro(){if(introReady||!firstStage)return;introReady=true;firstStage.classList.add('expanded');enterCopy(firstStage);}
+if(firstStage){if(reduced.matches)startIntro();else requestAnimationFrame(()=>requestAnimationFrame(()=>loadPhoto(firstStage.querySelector('.stage-image')).then(()=>requestAnimationFrame(startIntro))));}
 let pending=false;
-function draw(){pending=false;header?.classList.toggle('compact',scrollY>100);for(const stage of stages){const r=stage.getBoundingClientRect(),p=Math.max(-1,Math.min(1,r.top/innerHeight));stage.querySelector('.stage-copy').style.transform=`translateY(${p*-24}px)`;}}
+function draw(){pending=false;header?.classList.toggle('compact',scrollY>100);for(const stage of stages){const r=stage.getBoundingClientRect(),p=Math.max(-1,Math.min(1,r.top/innerHeight));stage.querySelector('.stage-copy').style.transform=reduced.matches?'none':`translateY(${p*-24}px)`;}}
 addEventListener('scroll',()=>{if(!pending){pending=true;requestAnimationFrame(draw);}},{passive:true});draw();
 // Load and decode the next photo before replacing the one already visible.
 const loading=new WeakMap();
@@ -39,9 +43,11 @@ if('IntersectionObserver'in window){
  const nearby=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){prepare(entry.target);nearby.unobserve(entry.target);}},{rootMargin:'300px'});
  const visible=new IntersectionObserver(entries=>entries.forEach(entry=>setVisible(entry.target,entry.isIntersecting&&entry.intersectionRatio>.12)),{threshold:[0,.12]});
  stages.forEach(stage=>{nearby.observe(stage);visible.observe(stage);});
-}else{stages.forEach(stage=>setVisible(stage,true));}
+ const copyObserver=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){enterCopy(entry.target.closest('.w-stage'));copyObserver.unobserve(entry.target);}},{threshold:.2});
+ stages.forEach(stage=>copyObserver.observe(stage.querySelector('.stage-copy')));
+}else{stages.forEach(stage=>{setVisible(stage,true);enterCopy(stage);});}
 document.addEventListener('visibilitychange',()=>{for(const stage of stages){const s=state.get(stage);clearTimeout(s.timer);if(!document.hidden&&s.visible){warmNext(stage);schedule(stage);}}});
-reduced.addEventListener('change',()=>{for(const stage of stages){warmNext(stage);schedule(stage);}});
+reduced.addEventListener('change',()=>{draw();if(reduced.matches){startIntro();stages.forEach(enterCopy);}for(const stage of stages){warmNext(stage);schedule(stage);}});
 if('IntersectionObserver'in window){const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('is-visible');observer.unobserve(e.target);}}),{threshold:.16});document.querySelectorAll('[data-reveal]').forEach(e=>observer.observe(e));}
 const tabs=[...document.querySelectorAll('[data-tab]')];function selectTab(button){for(const t of tabs){const active=t===button;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.dataset.tab).hidden=!active;}}
 for(const button of tabs){button.addEventListener('click',()=>selectTab(button));button.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();let i=tabs.indexOf(button);i=e.key==='Home'?0:e.key==='End'?tabs.length-1:(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;selectTab(tabs[i]);tabs[i].focus();});}

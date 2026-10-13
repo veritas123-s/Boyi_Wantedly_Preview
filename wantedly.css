@@ -14,6 +14,15 @@
 .w-card img[src*=ep1-image-02],.w-card img[src*=ep2-image-02],.podcast-home-card img[src*=ep1-image-02],.podcast-home-card img[src*=ep2-image-02]{object-fit:contain;object-position:center;background:#f5f5f5}
 
 /* First content is readable immediately; only visible photos animate. */
-.stage-0 .stage-copy{animation:none}.stage-image{animation-play-state:paused}.w-stage.is-on-screen .stage-image.active{animation-play-state:running}.js [data-reveal]{opacity:1}.wantedly-subpage main{transition:none}.wantedly-subpage .reveal-ready:not(.is-revealed){opacity:1}
+.stage-0 .stage-copy{animation:none}.stage-image{animation-play-state:paused}.w-stage.is-on-screen .stage-image.active{animation-play-state:running}.wantedly-subpage main{transition:none}
 
+/* Restore the opening rhythm without an artificial navigation wait. */
 .wantedly-home .stage-copy h1,.wantedly-home .stage-copy h2{animation:none;opacity:1;transform:none}
+.js .wantedly-home .w-stage:not(.copy-entered) .stage-copy :is(h1,h2){opacity:.55;transform:translateY(36px)}
+.js .wantedly-home .w-stage.copy-entered .stage-copy :is(h1,h2){animation:stage-title-enter 1.1s cubic-bezier(.2,.65,.2,1) both}
+.wantedly-home .w-stage.copy-entered .stage-copy p{animation:stage-detail-enter .55s cubic-bezier(.2,.65,.2,1) both}
+.wantedly-home .w-stage.copy-entered .stage-link{animation:stage-detail-enter .6s cubic-bezier(.2,.65,.2,1) .15s both}
+.stage-0 .stage-visual{transition:left .7s cubic-bezier(.2,.65,.2,1),top .7s cubic-bezier(.2,.65,.2,1)}
+@keyframes stage-title-enter{from{opacity:.55;transform:translateY(36px)}to{opacity:1;transform:none}}
+@keyframes stage-detail-enter{from{opacity:.65;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.js .wantedly-home .w-stage .stage-copy :is(h1,h2){opacity:1!important;transform:none!important}}
