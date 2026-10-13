@@ -4,6 +4,7 @@ if (window.BoyiReferenceMotion) return;
 const script = document.currentScript;
 const asset = new URL('media/brand/institutions.jpg', script?.src || location.href).href;
 const mq = matchMedia('(prefers-reduced-motion: reduce)');
+const staticTitles = () => mq.matches || document.documentElement.hasAttribute('data-rm-static');
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const el = (tag, cls) => { const n = document.createElement(tag); n.className = cls; return n; };
@@ -25,13 +26,17 @@ function watch(n) { if(io)io.observe(n);else{visible.add(n);if(titles.has(n))rev
 function pulse(n) {
   clearTimeout(timers.get(n));
   n.classList.remove('rm-play');
-  if(mq.matches){n.classList.remove('rm-pending');return;}
+  if(staticTitles()){n.classList.remove('rm-pending');return;}
   n.classList.add('rm-pending');
   void n.offsetWidth;n.classList.add('rm-play');
-  const duration=n.classList.contains('rm-title-band')?1700:2700;
-  const delay=parseFloat(n.style.getPropertyValue('--rm-title-delay'))||0;
+  // Read the actual CSS timing so fallback and the final visible layer agree.
+  const ms = value => parseFloat(value) * (value.trim().endsWith('ms') ? 1 : 1000);
+  const duration = Math.max(0, ...$$('.rm-layer', n).map(layer => {
+    const style = getComputedStyle(layer);
+    return ms(style.animationDuration) + ms(style.animationDelay);
+  }));
   const finish=()=>{n.classList.remove('rm-play','rm-pending');};
-  timers.set(n,setTimeout(finish,duration+delay+30));
+  timers.set(n,setTimeout(finish,duration+100));
 }
 function reveal(n) { const stage=n.closest('.w-stage'); if(stage && !stage.classList.contains('copy-entered')) return; if (!entered.has(n)) { entered.add(n); pulse(n); } }
 function decorateTitle(n) {
@@ -39,7 +44,7 @@ function decorateTitle(n) {
   const originalLabel=n.innerText.trim().replace(/\s+/g,' ');
   const base=el('rm-base','rm-title-base');while(n.firstChild)base.append(n.firstChild);n.append(base);
   if(!n.hasAttribute('aria-label')) n.setAttribute('aria-label',originalLabel);
-  titles.add(n); n.classList.add('rm-title');if(!mq.matches)n.classList.add('rm-pending');
+  titles.add(n); n.classList.add('rm-title');if(!staticTitles())n.classList.add('rm-pending');
   // Await normal viewport entry without exposing offscreen base text.
   n.addEventListener('animationcancel',()=>{if(mq.matches||!n.classList.contains('rm-play')){clearTimeout(timers.get(n));n.classList.remove('rm-play','rm-pending');}});
   n.addEventListener('animationend',event=>{if(event.target.classList?.contains('rm-layer')&&event.target.style.getPropertyValue('--rm-layer')==='2'){clearTimeout(timers.get(n));n.classList.remove('rm-play','rm-pending');}});
@@ -59,8 +64,7 @@ function decorateTitle(n) {
     }
     n.append(layer);
   }
-  n.addEventListener('pointerenter', () => pulse(n));
-  n.addEventListener('focusin', () => pulse(n));
+  // A heading enters once; moving the pointer across readable text never hides it.
   watch(n);
 }
 function roll(link) {
@@ -307,7 +311,7 @@ function tabs() {
 function refresh() {
   if(!document.body) return;
   document.body.classList.add('rm-ready');
-  $$('.stage-copy h1,.stage-copy h2,main h1,.w-info h2').forEach(decorateTitle);
+  $$('.stage-copy h1,.stage-copy h2,main h1,.w-info h2,.cloud-section-head h2,.student-section-head h2').forEach(decorateTitle);
   $$('.stage-copy').forEach(copy=>$$('.rm-title',copy).forEach((n,i)=>n.style.setProperty('--rm-title-delay',`${i*150}ms`)));
   $$('.w-nav a,.w-menu-panel a,.stage-link,.w-footer a,[data-hover-text-trigger]').forEach(roll);
   $$('.stage-link,.text-link,[data-circle-icon-trigger]').forEach(n=>{arrow(n);line(n);});
