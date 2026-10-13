@@ -1,0 +1,67 @@
+{
+  "version": "2026-10-13-v1",
+  "brand": "博医云",
+  "cohort": "博医五期",
+  "status": "初版预览",
+  "students": [],
+  "mentors": [],
+  "events": [
+    {
+      "id": "meeting",
+      "title": "博医五期第一次班会",
+      "date": "2026-06-15",
+      "route": "activities/first-meeting/",
+      "cover": "media/cloud-events/meeting-14-1600.webp",
+      "photo_ids": [
+        "meeting-01",
+        "meeting-02",
+        "meeting-13",
+        "meeting-14",
+        "meeting-26",
+        "meeting-44",
+        "meeting-47",
+        "meeting-53"
+      ]
+    },
+    {
+      "id": "workshop",
+      "title": "博医工坊第一期",
+      "date": "2026-10-11",
+      "route": "activities/workshop-01/",
+      "cover": "media/cloud-events/workshop-09-1600.webp",
+      "photo_ids": [
+        "workshop-04",
+        "workshop-09",
+        "workshop-12",
+        "workshop-14",
+        "workshop-16",
+        "workshop-20"
+      ]
+    },
+    {
+      "id": "shanhai-talk",
+      "title": "山海谈第0期",
+      "date": "2026-10-10",
+      "route": "activities/shanhai-00/",
+      "cover": "media/cloud-events/shanhai-talk-04-1600.webp",
+      "photo_ids": [
+        "shanhai-talk-02",
+        "shanhai-talk-04",
+        "shanhai-talk-05",
+        "shanhai-talk-07",
+        "shanhai-talk-11",
+        "shanhai-talk-16",
+        "shanhai-talk-21",
+        "shanhai-talk-23"
+      ]
+    }
+  ],
+  "pending": [
+    "学员和导师资料",
+    "个人账号与编辑审核",
+    "分级权限",
+    "报名签到通知",
+    "五期知识库",
+    "履历PDF导出"
+  ]
+}

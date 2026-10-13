@@ -21,19 +21,28 @@ const io = 'IntersectionObserver' in window ? new IntersectionObserver(entries =
   }
   wake();
 }, {threshold: .08}) : null;
-function watch(n) { if (io) io.observe(n); else visible.add(n); }
+function watch(n) { if(io)io.observe(n);else{visible.add(n);if(titles.has(n))reveal(n);} }
 function pulse(n) {
   clearTimeout(timers.get(n));
   n.classList.remove('rm-play');
-  if (mq.matches) return;
-  void n.offsetWidth;
-  n.classList.add('rm-play');
-  timers.set(n, setTimeout(() => n.classList.remove('rm-play'), 2800));
+  if(mq.matches){n.classList.remove('rm-pending');return;}
+  n.classList.add('rm-pending');
+  void n.offsetWidth;n.classList.add('rm-play');
+  const duration=n.classList.contains('rm-title-band')?1700:2700;
+  const delay=parseFloat(n.style.getPropertyValue('--rm-title-delay'))||0;
+  const finish=()=>{n.classList.remove('rm-play','rm-pending');};
+  timers.set(n,setTimeout(finish,duration+delay+30));
 }
 function reveal(n) { const stage=n.closest('.w-stage'); if(stage && !stage.classList.contains('copy-entered')) return; if (!entered.has(n)) { entered.add(n); pulse(n); } }
 function decorateTitle(n) {
   if (titles.has(n) || n.closest('form,[contenteditable],.rm-layer')) return;
-  titles.add(n); n.classList.add('rm-title');
+  const originalLabel=n.innerText.trim().replace(/\s+/g,' ');
+  const base=el('rm-base','rm-title-base');while(n.firstChild)base.append(n.firstChild);n.append(base);
+  if(!n.hasAttribute('aria-label')) n.setAttribute('aria-label',originalLabel);
+  titles.add(n); n.classList.add('rm-title');if(!mq.matches)n.classList.add('rm-pending');
+  // Await normal viewport entry without exposing offscreen base text.
+  n.addEventListener('animationcancel',()=>{if(mq.matches||!n.classList.contains('rm-play')){clearTimeout(timers.get(n));n.classList.remove('rm-play','rm-pending');}});
+  n.addEventListener('animationend',event=>{if(event.target.classList?.contains('rm-layer')&&event.target.style.getPropertyValue('--rm-layer')==='2'){clearTimeout(timers.get(n));n.classList.remove('rm-play','rm-pending');}});
   const geometry=()=>{const r=n.getBoundingClientRect();n.style.setProperty('--rm-skew',`${r.height*Math.tan(22.5*Math.PI/180)}px`);n.style.setProperty('--rm-band-width',`${Math.min(600,r.width*.55)}px`);};
   geometry();addEventListener('resize',geometry,{passive:true});
   n.classList.add(n.closest('.stage-copy') ? 'rm-title-band' : 'rm-title-gradient');
@@ -354,7 +363,9 @@ function scrollEffects() {
   }
 }
 function init() {
-  if(ready) return; ready=true; refresh(); introPhotos(); scrollEffects();
+  if(ready) return; ready=true;
+  if(!getComputedStyle(document.documentElement).getPropertyValue('--rm-paper').trim()){document.documentElement.classList.remove('rm-boot');return;}
+  refresh();document.documentElement.classList.remove('rm-boot');introPhotos();scrollEffects();
   const header=$('.w-header');for(const event of ['pointerenter','pointerleave','focusin','focusout']) header?.addEventListener(event,()=>requestAnimationFrame(syncHeader));
   for(const stage of $$('.w-stage')) new MutationObserver(()=>{
     if(stage.classList.contains('copy-entered')) $$('.rm-title',stage).forEach(reveal);
@@ -372,13 +383,15 @@ function init() {
     for(const f of fields) ro.observe(f.figure);
   }
   addEventListener('resize',()=>{for(const f of fields){resizeField(f);drawField(f,elapsed);}scrollEffects();},{passive:true});
+  window.BoyiReferenceMotion.initialized=true;
 }
 function stop() {cancelAnimationFrame(raf);raf=0;last=0;for(const finish of [...photos.values()])finish();}
 document.addEventListener('visibilitychange',()=>{document.body?.classList.toggle('rm-paused',document.hidden);if(document.hidden)stop();else wake();});
 addEventListener('pagehide',()=>{running=false;document.body?.classList.add('rm-paused');stop();});
 addEventListener('pageshow',()=>{running=true;document.body?.classList.remove('rm-paused');wake();});
-mq.addEventListener('change',()=>{stop();for(const n of titles)n.classList.remove('rm-play');for(const f of fields)drawField(f,elapsed);scrollEffects();wake();});
+mq.addEventListener('change',()=>{stop();for(const n of titles)n.classList.remove('rm-play','rm-pending');for(const f of fields)drawField(f,elapsed);scrollEffects();wake();});
 window.BoyiReferenceMotion={
+  initialized:false,
   transitionPhoto,
   refresh,
   replayTitles(root=document){for(const n of titles)if(root===n||root.contains(n))pulse(n);},
