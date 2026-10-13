@@ -26,3 +26,6 @@
 @keyframes stage-title-enter{from{opacity:.55;transform:translateY(36px)}to{opacity:1;transform:none}}
 @keyframes stage-detail-enter{from{opacity:.65;transform:translateY(14px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.js .wantedly-home .w-stage .stage-copy :is(h1,h2){opacity:1!important;transform:none!important}}
+
+/* The reference renderer now supplies diagonal title scans. */
+.js .wantedly-home .w-stage .stage-copy :is(h1,h2){animation:none!important;opacity:1!important;transform:none!important}

@@ -13,7 +13,7 @@ function enterCopy(stage){if(stage===firstStage&&!introReady)return;stage.classL
 function startIntro(){if(introReady||!firstStage)return;introReady=true;firstStage.classList.add('expanded');enterCopy(firstStage);}
 if(firstStage){if(reduced.matches)startIntro();else requestAnimationFrame(()=>requestAnimationFrame(()=>loadPhoto(firstStage.querySelector('.stage-image')).then(()=>requestAnimationFrame(startIntro))));}
 let pending=false;
-function draw(){pending=false;header?.classList.toggle('compact',scrollY>100);for(const stage of stages){const r=stage.getBoundingClientRect(),p=Math.max(-1,Math.min(1,r.top/innerHeight));stage.querySelector('.stage-copy').style.transform=reduced.matches?'none':`translateY(${p*-24}px)`;}}
+function draw(){pending=false;header?.classList.toggle('compact',scrollY>10);for(const stage of stages){const r=stage.getBoundingClientRect(),p=Math.max(-1,Math.min(1,r.top/innerHeight));stage.querySelector('.stage-copy').style.transform=reduced.matches?'none':`translateY(${p*-24}px)`;}}
 addEventListener('scroll',()=>{if(!pending){pending=true;requestAnimationFrame(draw);}},{passive:true});draw();
 // Load and decode the next photo before replacing the one already visible.
 const loading=new WeakMap();
@@ -35,7 +35,15 @@ function prepare(stage){const s=state.get(stage);return loadPhoto(s.photos[s.ind
 function warmNext(stage){const s=state.get(stage);if(!s.visible||reduced.matches||document.hidden)return;idle(()=>{if(s.visible&&!document.hidden)loadPhoto(s.photos[(s.index+1)%s.photos.length]);});}
 function schedule(stage){const s=state.get(stage);clearTimeout(s.timer);if(!s.visible||document.hidden||reduced.matches)return;s.timer=setTimeout(async()=>{
   const next=(s.index+1)%s.photos.length,ready=await loadPhoto(s.photos[next]);
-  if(ready&&s.visible&&!document.hidden&&!reduced.matches){s.photos[s.index].classList.remove('active');s.index=next;s.photos[next].classList.add('active');warmNext(stage);}
+  if(ready&&s.visible&&!document.hidden&&!reduced.matches){const previous=s.photos[s.index];
+   const motion=window.BoyiReferenceMotion;
+   let switched=false;
+   if(motion&&typeof motion.transitionPhoto==='function'){
+    try{switched=await motion.transitionPhoto(stage,previous,s.photos[next]);}
+    catch(error){console.warn('Photo transition fell back to decoded image',error);}
+   }
+   if(!switched){previous.classList.remove('active');s.photos[next].classList.add('active');}
+   s.index=next;warmNext(stage);}
   schedule(stage);
  },6500);}
 function setVisible(stage,visible){const s=state.get(stage);s.visible=visible;stage.classList.toggle('is-on-screen',visible);clearTimeout(s.timer);if(visible)prepare(stage).then(()=>{warmNext(stage);schedule(stage);});}

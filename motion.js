@@ -18,8 +18,7 @@
   if(!main||reduced.matches||typeof main.animate!=='function')return;
   const easing='cubic-bezier(.16,.8,.3,1)';
   entryAnimations.push(main.animate([{opacity:.92,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:280,easing}));
-  const title=main.querySelector('h1'),photo=main.querySelector('.portal-hero figure,.practice-hero-figure');
-  if(title)entryAnimations.push(title.animate([{opacity:.65,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{duration:560,delay:45,fill:'backwards',easing}));
+  const photo=main.querySelector('.portal-hero figure,.practice-hero-figure');
   if(photo)entryAnimations.push(photo.animate([{opacity:.82,transform:'translateY(14px) scale(.99)'},{opacity:1,transform:'none'}],{duration:620,delay:80,fill:'backwards',easing}));
  }
  enterPage();window.addEventListener('pageshow',event=>{if(event.persisted)enterPage();});
