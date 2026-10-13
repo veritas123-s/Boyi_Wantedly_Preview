@@ -12,3 +12,8 @@
 /* Keep the guest face in the wide episode-one thumbnail. */
 .w-card img[src*=ep1-image-02],.w-card img[src*=ep2-image-02],.podcast-home-card img[src*=ep1-image-02],.podcast-home-card img[src*=ep2-image-02]{object-position:50% 12%}
 .w-card img[src*=ep1-image-02],.w-card img[src*=ep2-image-02],.podcast-home-card img[src*=ep1-image-02],.podcast-home-card img[src*=ep2-image-02]{object-fit:contain;object-position:center;background:#f5f5f5}
+
+/* First content is readable immediately; only visible photos animate. */
+.stage-0 .stage-copy{animation:none}.stage-image{animation-play-state:paused}.w-stage.is-on-screen .stage-image.active{animation-play-state:running}.js [data-reveal]{opacity:1}.wantedly-subpage main{transition:none}.wantedly-subpage .reveal-ready:not(.is-revealed){opacity:1}
+
+.wantedly-home .stage-copy h1,.wantedly-home .stage-copy h2{animation:none;opacity:1;transform:none}
