@@ -100,7 +100,9 @@ function arrow(link) {
   const clip = el('rm-clip', 'rm-arrow-clip'); clip.setAttribute('aria-hidden', 'true');
   for (let i = 0; i < 2; i++) {
     const mark = el('rm-mark', `rm-arrow-mark rm-arrow-mark-${i}`);
-    mark.textContent = original.textContent.trim() || '↗'; clip.append(mark);
+    const graphic=original.querySelector('svg');
+    if(graphic)mark.append(graphic.cloneNode(true));else mark.innerHTML='<svg class="boyi-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 19 19 5M8 5h11v11"/></svg>';
+    clip.append(mark);
   }
   slot.append(original, clip);
 }

@@ -1,0 +1,50 @@
+{
+  "articles": [
+    {
+      "id": "zhang-jiayu",
+      "title": "经验与凝视——浅谈现代临床语言的形成、断裂与弥合",
+      "published_at": "2026-09-29",
+      "author_id": "zhang-jiayu",
+      "author_name": "张家羽",
+      "author_credit": "文案丨博医计划五期学员 25级临五 张家羽",
+      "editor_credit": "排版丨博医计划五期学员 25级临五 陈奕萱",
+      "source_url": "https://mp.weixin.qq.com/s/nxBDB-tui_rKLmlCCR8elA",
+      "path": "voices/zhang-jiayu.html",
+      "student_path": "window/students/zhang-jiayu.html",
+      "cover": "media/voices/zhang-jiayu-cover.webp",
+      "content_status": "full_text_embedded",
+      "paragraph_count": 25
+    },
+    {
+      "id": "xin-zhengye",
+      "title": "七月稻禾青，健康伴童行",
+      "published_at": "2026-10-06",
+      "author_id": "xin-zhengye",
+      "author_name": "辛政烨",
+      "author_credit": "文案丨博医计划五期学员 25级临五 辛政烨",
+      "editor_credit": "排版丨博医计划五期学员 25级临八 闫一好",
+      "source_url": "https://mp.weixin.qq.com/s/uprGQe4YF7SUlfr8S6Tq-A",
+      "path": "voices/xin-zhengye.html",
+      "student_path": "window/students/xin-zhengye.html",
+      "cover": "media/voices/xin-zhengye-cover.webp",
+      "content_status": "full_text_embedded",
+      "paragraph_count": 17
+    },
+    {
+      "id": "bao-jiahao",
+      "title": "一纸问卷的温度",
+      "published_at": "2026-10-13",
+      "author_id": "bao-jiahao",
+      "author_name": "包佳昊",
+      "author_credit": "文案丨博医计划五期学员 25级口五 包佳昊",
+      "editor_credit": "排版丨博医计划五期学员 25级临五 张敏行",
+      "source_url": "https://mp.weixin.qq.com/s/NaZDR4dI1nnzQ_SibLrdpQ",
+      "path": "voices/bao-jiahao.html",
+      "student_path": "window/students/bao-jiahao.html",
+      "cover": "media/voices/bao-jiahao-cover.webp",
+      "content_status": "full_text_embedded",
+      "paragraph_count": 21
+    }
+  ],
+  "association": "author_id exact match; editor credit kept separately; only published bylines determine ownership"
+}

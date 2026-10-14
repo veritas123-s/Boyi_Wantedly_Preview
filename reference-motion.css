@@ -141,3 +141,4 @@ body.rm-ready,body.wantedly-subpage.rm-ready{--paper:#faf9f6;--ink:#292723;--mut
 
 /* Preserve the stage CTA anchor while its underline animates. */
 .stage-link.rm-cta{position:absolute;top:auto;left:auto}
+.rm-title{overflow:clip}
