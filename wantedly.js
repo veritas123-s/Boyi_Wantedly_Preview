@@ -1,3 +1,4 @@
+(()=>{
 'use strict';
 document.documentElement.classList.add('js');
 const header=document.querySelector('.w-header'),menu=document.querySelector('.w-menu'),panel=document.querySelector('.w-menu-panel');
@@ -11,7 +12,11 @@ const firstStage=document.querySelector('.stage-0');
 let introReady=false;
 function enterCopy(stage){if(stage===firstStage&&!introReady)return;stage.classList.add('copy-entered');}
 function startIntro(){if(introReady||!firstStage)return;introReady=true;firstStage.classList.add('expanded');enterCopy(firstStage);}
-if(firstStage){if(reduced.matches)startIntro();else requestAnimationFrame(()=>requestAnimationFrame(()=>loadPhoto(firstStage.querySelector('.stage-image')).then(()=>requestAnimationFrame(startIntro))));}
+// The original opening expands when it enters view after the new brand page.
+if(firstStage){
+ const intro=()=>{if(reduced.matches)startIntro();else requestAnimationFrame(()=>requestAnimationFrame(()=>loadPhoto(firstStage.querySelector('.stage-image')).then(()=>requestAnimationFrame(startIntro))));};
+ if('IntersectionObserver' in window){const introObserver=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting&&e.intersectionRatio>.12)){intro();introObserver.disconnect();}},{threshold:.12});introObserver.observe(firstStage);}else intro();
+}
 let pending=false;
 function draw(){pending=false;header?.classList.toggle('compact',scrollY>10);for(const stage of stages){const r=stage.getBoundingClientRect(),p=Math.max(-1,Math.min(1,r.top/innerHeight));stage.querySelector('.stage-copy').style.transform=reduced.matches?'none':`translateY(${p*-24}px)`;}}
 addEventListener('scroll',()=>{if(!pending){pending=true;requestAnimationFrame(draw);}},{passive:true});draw();
@@ -33,7 +38,7 @@ const state=new Map(stages.map(stage=>[stage,{photos:[...stage.querySelectorAll(
 const idle=callback=>{if('requestIdleCallback'in window)requestIdleCallback(callback,{timeout:2000});else setTimeout(callback,200);};
 function prepare(stage){const s=state.get(stage);return loadPhoto(s.photos[s.index]);}
 function warmNext(stage){const s=state.get(stage);if(!s.visible||reduced.matches||document.hidden)return;idle(()=>{if(s.visible&&!document.hidden)loadPhoto(s.photos[(s.index+1)%s.photos.length]);});}
-function schedule(stage){const s=state.get(stage);clearTimeout(s.timer);if(!s.visible||document.hidden||reduced.matches)return;s.timer=setTimeout(async()=>{
+function schedule(stage){const s=state.get(stage);clearTimeout(s.timer);if(s.photos.length<2||!s.visible||document.hidden||reduced.matches)return;s.timer=setTimeout(async()=>{
   const next=(s.index+1)%s.photos.length,ready=await loadPhoto(s.photos[next]);
   if(ready&&s.visible&&!document.hidden&&!reduced.matches){const previous=s.photos[s.index];
    const motion=window.BoyiReferenceMotion;
@@ -70,3 +75,5 @@ function prefetchLink(link){
 }
 document.addEventListener('pointerover',event=>prefetchLink(event.target.closest('.w-nav a,.w-menu-panel a,.stage-link')),{passive:true});
 document.addEventListener('focusin',event=>prefetchLink(event.target.closest('.w-nav a,.w-menu-panel a,.stage-link')));
+
+})();
