@@ -2,7 +2,8 @@
 'use strict';
 if (window.BoyiReferenceMotion) return;
 const script = document.currentScript;
-const asset = new URL('media/brand/institutions.jpg', script?.src || location.href).href;
+const assetBase = script?.src || location.href;
+const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh', {granularity:'grapheme'}) : null;
 const mq = matchMedia('(prefers-reduced-motion: reduce)');
 const staticTitles = () => mq.matches || document.documentElement.hasAttribute('data-rm-static');
 const $ = (s, r = document) => r.querySelector(s);
@@ -11,7 +12,16 @@ const el = (tag, cls) => { const n = document.createElement(tag); n.className = 
 const clamp = x => Math.max(0, Math.min(1, x));
 const ease = x => x < .5 ? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2;
 const titles = new Set(), fields = new Set(), photos = new Map();
-const entered = new WeakSet(), timers = new WeakMap();
+const entered = new WeakSet(), timers = new WeakMap(), footerLinks = new WeakSet();
+let geometryFrame=0;
+function queueTitleGeometry() {
+ if(geometryFrame) return;
+ geometryFrame=requestAnimationFrame(()=>{
+  geometryFrame=0;
+  const boxes=[...titles].map(n=>({n,r:n.getBoundingClientRect()}));
+  for(const {n,r} of boxes){n.style.setProperty('--rm-skew',`${r.height*Math.tan(22.5*Math.PI/180)}px`);n.style.setProperty('--rm-band-width',`${Math.min(600,r.width*.55)}px`);}
+ });
+}
 let footerThumbState=null;
 let running = true, raf = 0, last = 0, elapsed = 0, ready = false;
 const visible = new WeakSet();
@@ -48,8 +58,7 @@ function decorateTitle(n) {
   // Await normal viewport entry without exposing offscreen base text.
   n.addEventListener('animationcancel',()=>{if(mq.matches||!n.classList.contains('rm-play')){clearTimeout(timers.get(n));n.classList.remove('rm-play','rm-pending');}});
   n.addEventListener('animationend',event=>{if(event.target.classList?.contains('rm-layer')&&event.target.style.getPropertyValue('--rm-layer')==='2'){clearTimeout(timers.get(n));n.classList.remove('rm-play','rm-pending');}});
-  const geometry=()=>{const r=n.getBoundingClientRect();n.style.setProperty('--rm-skew',`${r.height*Math.tan(22.5*Math.PI/180)}px`);n.style.setProperty('--rm-band-width',`${Math.min(600,r.width*.55)}px`);};
-  geometry();addEventListener('resize',geometry,{passive:true});
+  queueTitleGeometry();
   n.classList.add(n.closest('.stage-copy') ? 'rm-title-band' : 'rm-title-gradient');
   for (let i = 0; i < 3; i++) {
     const layer = el('rm-layer', 'rm-layer');
@@ -77,7 +86,7 @@ function roll(link) {
   let i = 0;
   for (const node of nodes) {
     const fragment = document.createDocumentFragment();
-    const chars = typeof Intl.Segmenter === 'function' ? [...new Intl.Segmenter('zh', {granularity:'grapheme'}).segment(node.data)].map(v => v.segment) : Array.from(node.data);
+    const chars = segmenter ? [...segmenter.segment(node.data)].map(v => v.segment) : Array.from(node.data);
     for (const ch of chars) {
       if (/\s/.test(ch)) { fragment.append(document.createTextNode(ch)); continue; }
       const cell = el('rm-char', 'rm-char');
@@ -113,6 +122,15 @@ function line(link) {
     const n = el('rm-line', name); n.setAttribute('aria-hidden', 'true'); link.append(n);
   }
 }
+function prepareFooterLinks() {
+ const footer=$('.w-footer');if(!footer || footerLinks.has(footer))return;
+ footerLinks.add(footer);
+ const links=$$('a',footer);let index=0;
+ const idle=window.requestIdleCallback || (callback=>setTimeout(()=>callback({timeRemaining:()=>8}),16));
+ const chunk=()=>idle(deadline=>{let count=0;while(index<links.length && count<3 && (count===0||deadline.timeRemaining()>3)){roll(links[index++]);count++;}if(index<links.length)chunk();},{timeout:600});
+ if('IntersectionObserver' in window){const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){observer.disconnect();chunk();}},{rootMargin:'320px'});observer.observe(footer);}else chunk();
+ footer.addEventListener('focusin',e=>{const link=e.target.closest('a');if(link)roll(link);});
+}
 function field(host, kind, large = false) {
   if (!host || $('.rm-field', host)) return;
   const figure = el('figure', `rm-field rm-field-${kind}${large ? ' rm-field-large' : ''}`);
@@ -129,71 +147,102 @@ function field(host, kind, large = false) {
     figure.append(wheel);
   }
   host.prepend(figure);
-  const ctx = canvas.getContext('2d'); if (!ctx) { figure.remove(); return; }
-  const f = {figure, canvas, ctx, kind, labels, w:0, h:0, state:-1};
+  const f = {figure, canvas, ctx:null, kind, labels, w:0, h:0, state:-1,worker:null,pending:false,queuedTime:null,transferred:false};
+  if(typeof Worker==='function' && typeof OffscreenCanvas==='function' && canvas.transferControlToOffscreen){
+   try{
+    const worker=new Worker(new URL('field-worker.js?v=f252ac8cf9',assetBase));
+    f.worker=worker;const offscreen=canvas.transferControlToOffscreen();f.transferred=true;
+    worker.onmessage=()=>{f.pending=false;const time=f.queuedTime;f.queuedTime=null;if(time!==null && running && !document.hidden && visible.has(figure))drawField(f,time);};
+    worker.onerror=event=>{
+     event.preventDefault();
+     worker.terminate();f.worker=null;f.pending=false;f.queuedTime=null;
+     const replacement=f.canvas.cloneNode(false);f.canvas.replaceWith(replacement);f.canvas=replacement;f.ctx=replacement.getContext('2d');
+     if(!f.ctx){figure.remove();fields.delete(f);return;}f.points=null;resizeField(f);drawField(f,elapsed);
+    };
+    worker.postMessage({type:'init',canvas:offscreen,kind},[offscreen]);
+   }catch{f.worker?.terminate();f.worker=null;if(f.transferred){const replacement=f.canvas.cloneNode(false);f.canvas.replaceWith(replacement);f.canvas=replacement;}}
+  }
+  if(!f.worker){f.ctx=f.canvas.getContext('2d');if(!f.ctx){figure.remove();return;}}
   fields.add(f); watch(figure); resizeField(f); drawField(f, elapsed);
 }
 function resizeField(f) {
   const r = f.figure.getBoundingClientRect();
-  f.w = Math.max(1, r.width); f.h = Math.max(1, r.height);
   const dpr = Math.min(devicePixelRatio || 1, 2);
+  if((f.points||f.worker) && f.w===Math.max(1,r.width) && f.h===Math.max(1,r.height) && f.dpr===dpr)return;
+  f.w = Math.max(1, r.width); f.h = Math.max(1, r.height);
+  f.dpr=dpr;
+  if(f.worker){f.worker.postMessage({type:'resize',w:f.w,h:f.h,dpr});return;}
   f.canvas.width = Math.round(f.w*dpr); f.canvas.height = Math.round(f.h*dpr);
   f.ctx.setTransform(dpr,0,0,dpr,0,0);
+  cacheFieldPoints(f);
 }
 function smooth(a,b,x) { const q=clamp((x-a)/(b-a)); return q*q*(3-2*q); }
-function mission(x,y,t,mode) {
-  const r=Math.hypot(x,y), frame=t*60;
+function cacheFieldPoints(f) {
+ const {w,h,kind}=f,short=Math.min(w,h),pitch=kind==='mission'?short/30:7;
+ const cols=Math.floor(w/pitch),rows=Math.floor(h/pitch),points=[];
+ for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
+  const px=(w-cols*pitch)/2+i*pitch,py=(h-rows*pitch)/2+j*pitch,x=(px-w/2)/(short/2),y=(py-h/2)/(short/2),r=Math.hypot(x,y);
+  const point={px,py,x,y,r,mask:kind==='mission'?1-smooth(.88,1.12,r):1};
+  if(point.mask<=0)continue;
+  if(kind==='mission')point.swirl=(Math.atan2(y,x)+1.6*Math.log(Math.max(r,.001)))*3/(Math.PI*2)+.5;
+  if(kind==='ripple')point.ripple=Array.from({length:4},(_,k)=>{const d=Math.hypot(x-Math.cos(k*2)*.65,y-Math.sin(k*2)*.4);return {sin:Math.sin(d*11+k),cos:Math.cos(d*11+k),weight:Math.exp(-d*.7)/3};});
+  points.push(point);
+ }
+ f.pitch=pitch;f.points=points;
+}
+function mission(point,mode,waves,spin) {
+  const {r}=point;
   if(mode===0 || mode===1) {
-    const count=mode===0?3:2; let value=0;
-    for(let k=0;k<count;k++) {
-      const phase=(frame*.004+k/count)%1;
-      const radius=phase*(mode===0?1.1:1.2);
-      const decay=Math.pow(1-phase,mode===0?1.5:1.2);
+    let value=0;
+    for(const {radius,decay} of waves[mode]) {
       const wave=mode===0?1-smooth(radius-.25,radius+.25,r):Math.exp(-Math.pow((r-radius)/.16,2));
       value=Math.max(value,wave*decay);
     }
     return value;
   }
-  const span=clamp(r), angle=Math.atan2(y,x);
-  const turns=(angle+frame*.02+1.6*Math.log(Math.max(r,.001)))*3/(Math.PI*2)+.5;
+  const span=clamp(r),turns=point.swirl+spin;
   const distance=Math.abs((turns-Math.floor(turns))-.5)*2;
   const width=.85*(1-.25*span);
   return (1-smooth(width*.5,width,distance))*smooth(0,.5,r)*(1-.8*span);
 }
 function drawField(f, time) {
+  if(f.worker){
+   const t=mq.matches?0:time,step=Math.floor(t/4);
+   if(f.state!==step){f.state=step;f.figure.dataset.rmPattern=['circle','rings','spiral'][step%3];f.figure.style.setProperty('--rm-wheel-angle',`${step*120}deg`);f.labels.forEach((n,i)=>n.classList.toggle('rm-active',i===step%3));}
+   if(f.pending){f.queuedTime=time;return;}f.pending=true;f.worker.postMessage({type:'draw',time:t});return;
+  }
   const {ctx,w,h,kind}=f, t=mq.matches?0:time;
   ctx.clearRect(0,0,w,h); ctx.fillStyle='#292723';
-  const short=Math.min(w,h), pitch=kind==='mission'?short/30:7;
+  if(!f.points)cacheFieldPoints(f);
+  const pitch=f.pitch;
   const step=Math.floor(t/4), mode=step%3, previous=step===0?mode:(mode+2)%3;
   const morph=ease(clamp((t%4)/1.5));
   if (f.state!==step) {
     f.state=step; f.figure.dataset.rmPattern=['circle','rings','spiral'][mode]; f.figure.style.setProperty('--rm-wheel-angle', `${step*120}deg`);
     f.labels.forEach((n,i)=>n.classList.toggle('rm-active',i===mode));
   }
-  const cols=Math.floor(w/pitch), rows=Math.floor(h/pitch);
-  for(let j=0;j<=rows;j++) for(let i=0;i<=cols;i++) {
-    const px=(w-cols*pitch)/2+i*pitch, py=(h-rows*pitch)/2+j*pitch;
-    const x=(px-w/2)/(short/2), y=(py-h/2)/(short/2), r=Math.hypot(x,y);
-    let v, mask=1;
+  const waves=kind==='mission'?[0,1].map(mode=>Array.from({length:mode===0?3:2},(_,k)=>{const phase=(t*60*.004+k/(mode===0?3:2))%1;return {radius:phase*(mode===0?1.1:1.2),decay:Math.pow(1-phase,mode===0?1.5:1.2)};})):null;
+  const spin=t*60*.02*3/(Math.PI*2);
+  const centers=kind==='sphere'?Array.from({length:3},(_,k)=>({cx:Math.sin(t*.22+k*2)*.8,cy:Math.cos(t*.18+k*2)*.35,size:.5+k*.1})):null;
+  const phases=kind==='ripple'?Array.from({length:4},(_,k)=>({sin:Math.sin(t*(1+k*.17)),cos:Math.cos(t*(1+k*.17))})):null;
+  for(const point of f.points) {
+    const {px,py,x,y,r,mask}=point;let v;
     if(kind==='mission') {
-      v=mission(x,y,t,previous)*(1-morph)+mission(x,y,t,mode)*morph;
-      mask=1-smooth(.88,1.12,r);
+      v=morph===1?mission(point,mode,waves,spin):morph===0?mission(point,previous,waves,spin):mission(point,previous,waves,spin)*(1-morph)+mission(point,mode,waves,spin)*morph;
     } else if(kind==='sphere') {
       v=0;
-      for(let k=0;k<3;k++) {
-        const cx=Math.sin(t*.22+k*2)*.8, cy=Math.cos(t*.18+k*2)*.35;
-        const d=Math.hypot(x-cx,y-cy)/(.5+k*.1);
+      for(const {cx,cy,size} of centers) {
+        const d=Math.hypot(x-cx,y-cy)/size;
         if(d<1) v=Math.max(v,Math.sqrt(1-d*d)*(.65+.35*clamp(1-(x-cx))));
       }
     } else {
       v=0;
       for(let k=0;k<4;k++) {
-        const d=Math.hypot(x-Math.cos(k*2)*.65,y-Math.sin(k*2)*.4);
-        v+=Math.max(0,Math.sin(d*11-t*(1+k*.17)+k))*Math.exp(-d*.7)/3;
+        const wave=point.ripple[k],phase=phases[k];
+        v+=Math.max(0,wave.sin*phase.cos-wave.cos*phase.sin)*wave.weight;
       }
     }
     const radius=pitch*(kind==='mission'?.03+.39*Math.pow(clamp(v),.9):.06+.32*Math.pow(clamp(v),.82))*(kind==='mission'?1+.25*Math.sin(t*3-r*3):1);
-    if(mask<=0) continue;
     ctx.globalAlpha=mask; ctx.beginPath(); ctx.arc(px,py,radius,0,Math.PI*2); ctx.fill();
   }
   ctx.globalAlpha=1;
@@ -236,16 +285,10 @@ function tick(now) {
 function wake() { if(!raf && running && !document.hidden && !mq.matches) raf=requestAnimationFrame(tick); }
 function etch() {
   if($('.rm-etch') || /(^|\/)admin(\/|\.|$)/i.test(location.pathname)) return;
-  const ns='http://www.w3.org/2000/svg';
-  const svgNode=(tag,attrs)=>{const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs)) n.setAttribute(k,v);return n;};
   const wrap=el('div','rm-etch'); wrap.setAttribute('aria-hidden','true');
-  [[98,927,439,439],[614,947,459,399]].forEach((box,i)=>{
-    const svg=svgNode('svg',{viewBox:box.join(' '),class:`rm-etch-logo rm-etch-${i}`,focusable:'false'});
-    const defs=svgNode('defs',{}), filter=svgNode('filter',{id:`rm-logo-filter-${i}`,x:'-2%',y:'-2%',width:'104%',height:'104%','color-interpolation-filters':'sRGB'});
-    filter.append(svgNode('feColorMatrix',{type:'matrix',values:'0 0 0 0 .16 0 0 0 0 .15 0 0 0 0 .14 -.2126 -.7152 -.0722 0 1'}));
-    defs.append(filter); svg.append(defs);
-    svg.append(svgNode('image',{href:asset,width:'1179',height:'2014',filter:`url(#rm-logo-filter-${i})`}));
-    wrap.append(svg);
+  ['shsmu','boyi'].forEach((name,i)=>{
+    const image=el('img',`rm-etch-logo rm-etch-${i}`);image.alt='';image.setAttribute('aria-hidden','true');image.decoding='async';image.fetchPriority='low';
+    image.src=new URL(`media/brand/${name}-etch.webp`,assetBase).href;wrap.append(image);
   });
   document.body.prepend(wrap);
 }
@@ -315,9 +358,9 @@ function refresh() {
   document.body.classList.add('rm-ready');
   $$('.stage-copy h1,.stage-copy h2,main h1,.w-info h2,.cloud-section-head h2,.student-section-head h2').forEach(decorateTitle);
   $$('.stage-copy').forEach(copy=>$$('.rm-title',copy).forEach((n,i)=>n.style.setProperty('--rm-title-delay',`${i*150}ms`)));
-  $$('.w-nav a,.w-menu-panel a,.stage-link,.w-footer a,[data-hover-text-trigger]').forEach(roll);
+  $$('.w-nav a,.w-menu-panel a,.stage-link,[data-hover-text-trigger]').forEach(roll);
   $$('.stage-link,.text-link,[data-circle-icon-trigger]').forEach(n=>{arrow(n);line(n);});
-  etch(); tabs(); footerThumbnail();
+  etch(); tabs(); footerThumbnail(); prepareFooterLinks();
   const info=$('.w-info');
   if(info) {
     const heads=$$('h2',info).slice(0,2);
@@ -388,7 +431,7 @@ function init() {
     const ro=new ResizeObserver(entries=>{for(const e of entries)for(const f of fields)if(e.target===f.figure){resizeField(f);drawField(f,elapsed);}});
     for(const f of fields) ro.observe(f.figure);
   }
-  addEventListener('resize',()=>{for(const f of fields){resizeField(f);drawField(f,elapsed);}scrollEffects();},{passive:true});
+  addEventListener('resize',()=>{queueTitleGeometry();for(const f of fields){resizeField(f);drawField(f,elapsed);}scrollEffects();},{passive:true});
   window.BoyiReferenceMotion.initialized=true;
 }
 function stop() {cancelAnimationFrame(raf);raf=0;last=0;for(const finish of [...photos.values()])finish();}
@@ -406,7 +449,7 @@ window.BoyiReferenceMotion={
     'Parent must call transitionPhoto after decode and await it before updating carousel index.',
     'Footer reveals in flow to preserve long-page layout; own stills rotate after decoding on eligible visible viewports.',
     'Floating join shapes require an existing matching host; no content, card order or formal logo is replaced.',
-    'Logo etching reuses the audited JPEG; it is not a vector master. Asset URL assumes this script is in the site root.'
+    'Logo etching uses build-time exports of the audited original filter; no per-visit image filter is needed. Asset URL assumes this script is in the site root.'
   ]
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

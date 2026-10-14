@@ -70,6 +70,8 @@
 .rm-footer{transform:translateY(var(--rm-footer-y,0px));clip-path:inset(var(--rm-footer-clip,0%) 0 0);overflow:hidden}
 .rm-footer img{translate:0 calc(var(--rm-footer-y,0px)*-.08)}
 .rm-paused *,.rm-paused *::before,.rm-paused *::after{animation-play-state:paused!important}
+.w-stage:not(.is-on-screen) .stage-image,.w-stage .stage-image:not(.active){animation-play-state:paused}
+.w-stage.is-on-screen .stage-image.active{animation-play-state:running}
 @media(max-width:759px){.rm-field{width:100px;opacity:.35;margin:0 0 1rem 1rem}.rm-field-large{width:240px;margin:1.5rem auto;opacity:.5}.rm-wheel-label{font-size:12px;transform:translate(-50%,-50%) rotate(var(--rm-label-angle)) translateY(-80px) rotate(calc(0deg - var(--rm-label-angle) - var(--rm-wheel-angle,0deg)))}.rm-etch-logo{opacity:.045}.rm-shape{opacity:.045}.rm-footer{transform:none;clip-path:none}.rm-footer img{translate:none}}
 @media(prefers-reduced-motion:reduce){.rm-ready *,.rm-ready *::before,.rm-ready *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.rm-layer,.rm-back{display:none!important}.rm-front{transform:none!important}.rm-arrow-mark-0{translate:0!important}.rm-arrow-mark-1{display:none}.rm-footer{transform:none;clip-path:none}.rm-footer img{translate:none}.rm-shape{translate:none;opacity:.055}.w-menu-panel.rm-menu-open a{opacity:1;transform:none}}
 /* Parent integration: retain each text run inside flex links and use measured heading geometry. */
