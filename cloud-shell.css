@@ -17,7 +17,8 @@
 .cloud-media-card .cloud-kicker{font-size:12px;letter-spacing:.04em;margin:16px 0 0;color:#8d202c}
 .cloud-home-content .cloud-media-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px}
 .cloud-home-content .cloud-tools{display:flex;flex-wrap:wrap;gap:24px}
-.cloud-home-content .cloud-tools a{color:#8d202c;text-underline-offset:5px}
+.cloud-home-content .cloud-tools a{color:#fff;background:#8d202c;text-underline-offset:5px}
+.cloud-home-content .cloud-tools a:hover{background:#721a24}
 .cloud-home-content .w-cards{margin:0;padding:0}
 .cloud-shell .cloud-hero img{width:100%;height:auto;border-radius:8px;object-fit:contain}
 .cloud-shell [data-window-cover]{margin:0 0 45px}
