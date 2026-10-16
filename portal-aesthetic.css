@@ -281,3 +281,14 @@ body.portal-home-v3 .portal-wall-invitation h2{font-size:clamp(23px,3.4vw,44px);
 @media(min-width:1024px){:is(body.portal-home-v3,body.wantedly-subpage) .w-header .w-nav{max-width:none!important;opacity:1!important;pointer-events:auto!important;overflow:visible!important;flex-shrink:0;transition:none!important}}
 .portal-photo-join .photo-wall img{animation-duration:4.5s;animation-iteration-count:1;animation-fill-mode:both}
 .portal-photo-join:is(:hover,:focus-within) .photo-wall img{animation-play-state:paused}
+
+.portal-contact{grid-column:1/-1;display:grid;grid-template-columns:154px minmax(0,1fr);align-items:center;gap:36px;background:#840c0e;padding:24px 32px;color:white;border-radius:12px}
+.portal-contact-qr{position:relative;display:block;width:154px;height:163px;overflow:hidden;background:white;flex:none}
+.portal-contact-qr img{position:absolute;display:block;width:352.941176%!important;max-width:none!important;height:auto!important;left:-26.470588%;top:-25.617284%;border-radius:0!important;transform:none!important}
+.portal-contact-copy{min-width:0}.portal-contact-marks{position:relative;width:196px;aspect-ratio:280/130;overflow:hidden;margin:0 0 8px}
+.portal-contact-marks img{position:absolute;display:block;width:385.714286%!important;max-width:none!important;height:auto!important;left:-214.285714%;top:-30.769231%;transform:none!important}
+.portal-contact-school{font-size:20px;font-weight:600;line-height:1.5;margin:0 0 7px;color:white}
+.portal-contact-name{font-size:18px;line-height:1.6;margin:0 0 10px;color:white;white-space:nowrap}
+.portal-contact-mail{display:inline-flex;align-items:center;gap:10px;min-height:44px;font-size:18px;line-height:1.4;white-space:nowrap;color:white!important}
+.portal-contact-mail svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.5;flex:none}
+@media(max-width:760px){.portal-contact{grid-template-columns:minmax(0,1fr);justify-items:center;gap:16px;padding:24px 16px;border-radius:10px}.portal-contact-copy{text-align:center;max-width:100%}.portal-contact-marks{margin:0 auto 10px;width:180px}.portal-contact-school{font-size:18px}.portal-contact-name{font-size:clamp(11px,3.6vw,16px)}.portal-contact-mail{font-size:17px}}
