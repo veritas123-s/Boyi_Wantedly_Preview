@@ -40,8 +40,8 @@ function setup(){
  const auth=document.getElementById('member-auth'),dashboard=document.getElementById('member-dashboard');if(!auth||!dashboard)return;
  const heading=[...root.querySelectorAll('h1')].find(element=>!auth.contains(element)&&!dashboard.contains(element));if(heading)heading.classList.add('portal-account-heading');
  const authLayout=node('div',undefined,'portal-auth-layout'),brand=node('aside',undefined,'portal-auth-brand'),card=node('div',undefined,'portal-auth-card');
- brand.append(node('p','博医云','portal-auth-eyebrow'),node('h2','让相识延续，让经历可见'),node('p','登录后维护自己的主页，记录学习、实践与作品。已有同名主页，请先核对认领。'));
- if(site){const image=node('img');image.src=new URL('media/liuan-selection/022-full.webp',site).href;image.alt='博医活动照片';image.loading='lazy';const fallback=node('p','照片暂时无法加载。','member-help');fallback.hidden=true;image.addEventListener('error',()=>{image.hidden=true;fallback.hidden=false;});brand.append(image,fallback);}
+ brand.append(node('p','博医云','portal-auth-eyebrow'),node('h2','你的博医主页'),node('p','更新个人资料、作品和实践记录。已有主页可以申请合并。'));
+ if(site){const image=node('img');image.src=new URL('media/liuan-selection/053-full.webp',site).href;image.alt='六安实践途中';image.loading='lazy';const fallback=node('p','照片暂时无法加载。','member-help');fallback.hidden=true;image.addEventListener('error',()=>{image.hidden=true;fallback.hidden=false;});brand.append(image,fallback);}
  auth.before(authLayout);authLayout.append(brand,card);card.append(auth);
  const dashboardLayout=node('div',undefined,'portal-dashboard-layout'),nav=node('nav',undefined,'portal-editor-nav');nav.setAttribute('aria-label','个人主页维护导航');dashboard.before(dashboardLayout);dashboardLayout.append(nav,dashboard);
  enhancePasswords(root);
