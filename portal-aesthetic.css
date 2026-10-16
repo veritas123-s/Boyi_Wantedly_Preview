@@ -180,3 +180,91 @@ body.portal-home-v3 .cloud-home-content .cloud-section,body.wantedly-subpage .cl
 @media(max-width:760px){body.wantedly-subpage .portal-flash-gateway{min-height:430px;border-radius:14px}.portal-flash-gateway .portal-gateway-photo{object-position:62% 50%}.portal-gateway-copy{padding:24px}.portal-gateway-kicker{font-size:13px;gap:8px;margin-bottom:16px}.portal-gateway-kicker svg{width:25px;height:25px}body.wantedly-subpage .portal-gateway-copy h1{font-size:clamp(32px,9vw,44px)}.portal-gateway-summary{font-size:15px;max-width:270px;margin-bottom:20px}}
 @media(prefers-reduced-motion:reduce){.portal-gateway-cta{transition:none}}
 @media(max-width:760px){body.portal-home-v3 .portal-feature h3{font-size:clamp(20px,5.6vw,22px);line-height:1.4;text-wrap:balance}}
+
+/* Final content: a distinct plan introduction, one companion, source-grounded organisation. */
+@font-face{font-family:BoyiMottoKai;src:url("media/brand/boyi-motto-kai.woff2") format("woff2");font-display:swap;font-weight:400;font-style:normal}
+body.portal-home-v3 #brand .opening-note{font-family:BoyiMottoKai,KaiTi,STKaiti,"楷体",serif;font-size:clamp(18px,2vw,25px);font-weight:400;letter-spacing:.12em;white-space:nowrap}
+body.portal-home-v3 #overview.portal-meet{display:grid;grid-template-columns:minmax(200px,1fr) minmax(0,2fr);gap:48px;align-items:center;padding:32px 0;margin:0;border-block:1px solid var(--portal-line)}
+.portal-meet-mark{display:grid;place-items:center;min-width:0}
+.portal-meet-mark img{display:block;width:min(100%,280px);height:auto;background:transparent;object-fit:contain}
+body.portal-home-v3 .portal-meet-copy h2,body.portal-home-v3 .portal-companion-copy h2{font-size:clamp(28px,3vw,40px);margin:0 0 18px;line-height:1.3;letter-spacing:-.02em}
+.portal-small-label{font-size:13px;color:var(--portal-wine);margin:0 0 10px;line-height:1.6}
+.portal-meet-copy>p:not(.portal-small-label){font-size:16px;line-height:1.9;margin:0 0 14px;color:#56514d;max-width:720px}
+.portal-inline-link{display:inline-flex;align-items:center;gap:10px;min-height:44px;color:var(--portal-wine);font-weight:600;white-space:nowrap}
+.portal-inline-link svg,.portal-companion-cta svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;transition:transform .2s}
+.portal-inline-link:hover svg,.portal-companion-cta:hover svg{transform:translate(3px,-3px)}
+body.portal-home-v3 .cloud-home-content .portal-companion{display:grid;grid-template-columns:300px minmax(0,1fr);align-items:center;gap:44px;padding:24px 32px;margin:24px 0;border-radius:20px;background:linear-gradient(110deg,#f0e7e7,#f5f4f4 75%);overflow:hidden}
+.portal-companion-art{min-width:0;text-align:center}
+.portal-companion-art img{display:block;width:230px;max-width:100%;height:auto;margin:auto;filter:none}
+.portal-companion-copy>p:not(.portal-small-label){font-size:16px;line-height:1.8;max-width:560px;margin:0 0 14px}
+.portal-companion-copy p.portal-companion-note{font-size:13px;color:#696365}
+body.portal-home-v3 .portal-companion-cta{display:inline-flex;align-items:center;justify-content:center;gap:18px;white-space:nowrap;min-height:46px;padding:10px 20px;background:#8d202c;color:white;border-radius:999px;font-size:15px;font-weight:600;transition:background .2s}
+body.portal-home-v3 .portal-companion-cta:hover{background:#651824}
+.portal-org-term{font-size:14px;color:var(--portal-wine);white-space:nowrap}
+.portal-org-guides{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 24px}
+.portal-org-guide{padding:16px 18px;border:1px solid #e3dcdc;background:#fff;border-radius:10px;min-width:0}
+.portal-org-guide dt{font-size:13px;color:#756f71;margin-bottom:6px;white-space:nowrap}
+.portal-org-guide dd{margin:0;font-size:19px;line-height:1.6;font-weight:600;color:#322d2e}
+.portal-org-root{padding:14px 20px;text-align:center;border-radius:10px;background:#8d202c;color:#fff;font-size:21px;font-weight:650;line-height:1.5}
+.portal-org-officers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+.portal-org-officers article{padding:16px 20px;background:#f2eded;border-radius:10px;min-width:0}
+.portal-org-officers p{color:#8d202c;font-size:13px;margin:0 0 4px}
+.portal-org-officers h3{font-size:22px;margin:0 0 6px;line-height:1.5}
+.portal-org-officers span{font-size:14px;color:#696365;line-height:1.6}
+.portal-org-parallel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.portal-org-branch{padding:20px;border:1px solid #dfd9da;background:white;border-radius:10px;min-width:0}
+.portal-org-branch>h3{font-size:20px;color:#8d202c;margin:0 0 4px}
+.portal-org-branch>p{font-size:13px;color:#696365;margin:0 0 16px}
+.portal-org-branch ul{padding:0;margin:0;list-style:none}
+.portal-org-branch li{padding:10px 0;border-top:1px solid #eee8e9;line-height:1.6}
+.portal-org-branch li,.portal-org-branch li>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.portal-org-branch li:has(p){display:block}
+.portal-org-branch li span{font-size:14px;white-space:nowrap;color:#696365}
+.portal-org-branch li strong{font-size:17px;font-weight:600;white-space:nowrap}
+.portal-org-branch li p{font-size:13px;line-height:1.6;color:#767072;margin:4px 0 0}
+.portal-org-caption{font-size:13px;line-height:1.7;color:#777175;margin:14px 0 8px}
+.portal-org-source summary{cursor:pointer;color:#8d202c;min-height:44px;display:flex;align-items:center;font-size:14px}
+.portal-org-source summary:before{content:"＋";margin-right:8px}
+.portal-org-source[open] summary:before{content:"－"}
+.portal-org-source img{display:block;width:100%;height:auto;background:white;border:1px solid #eee}
+body.wantedly-subpage .portal-ask-intro{display:grid;grid-template-columns:minmax(0,1fr) 160px;align-items:center;gap:24px}
+.portal-ask-intro>img{display:block;width:160px;height:auto}
+body.wantedly-subpage .portal-ask-intro h1{font-size:clamp(26px,3vw,40px);line-height:1.4;text-wrap:balance}
+@media(max-width:760px){
+ body.portal-home-v3 #overview.portal-meet{grid-template-columns:minmax(0,1fr);gap:18px;padding:24px 0}
+ .portal-meet-mark img{width:164px}
+ .portal-meet-copy>p:not(.portal-small-label){font-size:15px;line-height:1.85}
+ body.portal-home-v3 .portal-meet-copy h2,body.portal-home-v3 .portal-companion-copy h2{font-size:28px;margin-bottom:12px}
+ body.portal-home-v3 .cloud-home-content .portal-companion{grid-template-columns:110px minmax(0,1fr);gap:12px;padding:20px 16px;border-radius:14px;align-items:start}
+ .portal-companion-art{padding-top:12px}.portal-companion-art img{width:110px}
+ .portal-companion-copy>p:not(.portal-small-label){font-size:14px;line-height:1.75}
+ .portal-companion-copy p.portal-companion-note{font-size:12px}
+ .portal-small-label{font-size:12px}
+ body.portal-home-v3 .portal-companion-cta{font-size:14px;padding:9px 15px;gap:10px}
+ .portal-org-guides{grid-template-columns:minmax(0,1fr);gap:8px;margin:12px 0 16px}
+ .portal-org-guide{display:flex;align-items:baseline;gap:14px;padding:12px 14px}
+ .portal-org-guide dt{flex:0 0 65px;margin:0}.portal-org-guide dd{font-size:17px}
+ .portal-org-officers article{padding:14px}.portal-org-officers span{font-size:12px}
+ .portal-org-parallel{grid-template-columns:minmax(0,1fr);gap:12px}.portal-org-branch{padding:16px}
+ .portal-org-root{font-size:19px}.portal-org-branch li strong{font-size:15px}
+ .portal-org-branch li,.portal-org-branch li>div{gap:6px}.portal-org-branch li span{font-size:13px}
+ body.wantedly-subpage .portal-ask-intro{grid-template-columns:minmax(0,1fr) 80px;gap:10px}.portal-ask-intro>img{width:80px}
+}
+@media(prefers-reduced-motion:reduce){.portal-inline-link svg,.portal-companion-cta svg,.portal-companion-cta{transition:none}}
+
+body.portal-home-v3 .portal-meet-copy>p{text-wrap:pretty}
+body.portal-home-v3 .portal-photo-section{padding:0 0 24px;margin:24px 0 0}
+.portal-wall-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 16px}
+body.portal-home-v3 .portal-wall-heading h2{font-size:28px;line-height:1.4;margin:0}
+.portal-wall-heading>span{font-size:13px;color:#777;white-space:nowrap}
+body.portal-home-v3 .portal-photo-join{min-height:0;height:420px;margin:0;border-radius:16px;background:#d4d0c8;cursor:grab;display:block;isolation:isolate;touch-action:pan-y;user-select:none}
+.portal-photo-join.is-dragging{cursor:grabbing}
+.portal-photo-join .portal-wall-pan{position:absolute;inset:0;transform:translate(var(--wall-x,0px),var(--wall-y,0px));will-change:auto}
+.portal-photo-join .photo-wall{width:calc(140% + 200px);left:-22%;top:-130px;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;filter:none;transform:rotate(-11deg);pointer-events:none}
+.portal-photo-join .photo-wall img{aspect-ratio:4/3;border-radius:7px;width:100%;height:auto;object-fit:cover;animation:wall-drift 26s ease-in-out infinite alternate;box-shadow:0 4px 14px #18251e20}
+.portal-photo-join .photo-wall img:nth-child(even){animation-direction:alternate-reverse}
+.portal-photo-join.is-paused .photo-wall img,.portal-photo-join.is-dragging .photo-wall img{animation-play-state:paused}
+.portal-wall-controls{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:20px;color:white;background:linear-gradient(transparent,#102017b0);font-size:13px;pointer-events:none}
+.portal-wall-pause{pointer-events:auto;flex:none;background:#fffef5e8;color:#392d2d;border:1px solid #ffffff80;border-radius:999px;min-height:44px;padding:8px 16px;font-size:13px;white-space:nowrap}
+@media(max-width:760px){.portal-wall-heading{align-items:baseline;gap:8px;flex-wrap:wrap}body.portal-home-v3 .portal-wall-heading h2{font-size:25px}.portal-wall-heading>span{font-size:12px}body.portal-home-v3 .portal-photo-join{height:340px;border-radius:12px}.portal-photo-join .photo-wall{width:950px;left:calc(50% - 475px);top:-150px;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.portal-wall-controls{padding:16px;font-size:11px;gap:8px}.portal-wall-pause{padding:8px 12px}}
+@media(prefers-reduced-motion:reduce){.portal-photo-join .photo-wall img{animation:none}}
