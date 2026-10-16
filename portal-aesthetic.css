@@ -277,3 +277,7 @@ body.portal-home-v3 .portal-photo-join{min-height:0;height:420px;margin:0;border
 .portal-wall-invitation{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:30px;pointer-events:none;color:white;text-align:center}
 body.portal-home-v3 .portal-wall-invitation h2{font-size:clamp(23px,3.4vw,44px);line-height:1.45;letter-spacing:.04em;font-weight:650;margin:0;color:white;text-shadow:0 2px 12px #0005;white-space:nowrap}
 @media(max-width:760px){.portal-wall-invitation{padding:12px}body.portal-home-v3 .portal-wall-invitation h2{font-size:clamp(19px,5.5vw,26px);letter-spacing:0}}
+
+@media(min-width:1024px){:is(body.portal-home-v3,body.wantedly-subpage) .w-header .w-nav{max-width:none!important;opacity:1!important;pointer-events:auto!important;overflow:visible!important;flex-shrink:0;transition:none!important}}
+.portal-photo-join .photo-wall img{animation-duration:4.5s;animation-iteration-count:1;animation-fill-mode:both}
+.portal-photo-join:is(:hover,:focus-within) .photo-wall img{animation-play-state:paused}
