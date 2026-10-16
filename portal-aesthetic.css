@@ -268,3 +268,5 @@ body.portal-home-v3 .portal-photo-join{min-height:0;height:420px;margin:0;border
 .portal-wall-pause{pointer-events:auto;flex:none;background:#fffef5e8;color:#392d2d;border:1px solid #ffffff80;border-radius:999px;min-height:44px;padding:8px 16px;font-size:13px;white-space:nowrap}
 @media(max-width:760px){.portal-wall-heading{align-items:baseline;gap:8px;flex-wrap:wrap}body.portal-home-v3 .portal-wall-heading h2{font-size:25px}.portal-wall-heading>span{font-size:12px}body.portal-home-v3 .portal-photo-join{height:340px;border-radius:12px}.portal-photo-join .photo-wall{width:950px;left:calc(50% - 475px);top:-150px;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.portal-wall-controls{padding:16px;font-size:11px;gap:8px}.portal-wall-pause{padding:8px 12px}}
 @media(prefers-reduced-motion:reduce){.portal-photo-join .photo-wall img{animation:none}}
+
+.portal-credit{font-size:12px;line-height:1.7;color:#777;max-width:100%;text-wrap:pretty}@media(max-width:760px){.portal-credit{flex-basis:100%}}
