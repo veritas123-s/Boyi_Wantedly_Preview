@@ -179,3 +179,4 @@ body.portal-home-v3 .cloud-home-content .cloud-section,body.wantedly-subpage .cl
 :is(body.portal-home-v3,body.wantedly-subpage) .w-footer nav a small{white-space:nowrap}
 @media(max-width:760px){body.wantedly-subpage .portal-flash-gateway{min-height:430px;border-radius:14px}.portal-flash-gateway .portal-gateway-photo{object-position:62% 50%}.portal-gateway-copy{padding:24px}.portal-gateway-kicker{font-size:13px;gap:8px;margin-bottom:16px}.portal-gateway-kicker svg{width:25px;height:25px}body.wantedly-subpage .portal-gateway-copy h1{font-size:clamp(32px,9vw,44px)}.portal-gateway-summary{font-size:15px;max-width:270px;margin-bottom:20px}}
 @media(prefers-reduced-motion:reduce){.portal-gateway-cta{transition:none}}
+@media(max-width:760px){body.portal-home-v3 .portal-feature h3{font-size:clamp(20px,5.6vw,22px);line-height:1.4;text-wrap:balance}}
