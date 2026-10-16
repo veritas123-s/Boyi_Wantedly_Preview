@@ -152,3 +152,28 @@ body.portal-home-v3 #brand .portal-brand-heading{display:contents}
 body.portal-home-v3 #brand .stage-copy h1{font-size:clamp(24px,2.8vw,42px);white-space:nowrap;line-height:1.28}
 body.portal-home-v3 #brand .opening-note{font-size:14px;line-height:1.8}
 @media(max-width:760px){body.portal-home-v3 #brand .stage-copy h1{font-size:clamp(22px,7.7vw,38px)}body.portal-home-v3 .portal-story-links{width:calc(100% - 32px);margin:12px auto}}
+
+/* One practice gateway, hand-drawn icons and compact short-label rows. */
+body.wantedly-subpage .portal-journeys-gateway{padding-bottom:28px}
+body.wantedly-subpage .portal-flash-gateway{position:relative;isolation:isolate;display:flex;align-items:flex-end;overflow:hidden;min-height:510px;border-radius:18px;background:#27342b;color:#fff}
+.portal-flash-gateway:after{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,#101d18d9 0%,#101d1870 55%,#101d1814 100%)}
+.portal-flash-gateway .portal-gateway-photo{position:absolute;z-index:-2;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:50% 45%}
+.portal-gateway-copy{position:relative;max-width:650px;padding:44px}
+.portal-gateway-kicker{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600;white-space:nowrap;margin:0 0 20px}
+.portal-gateway-kicker svg{width:30px;height:30px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+body.wantedly-subpage .portal-gateway-copy h1{font-size:clamp(40px,5vw,68px);line-height:1.2;white-space:nowrap;margin:0 0 18px;color:inherit;letter-spacing:0}
+.portal-gateway-summary{max-width:390px;font-size:16px;line-height:1.7;margin:0 0 24px;color:#fff}
+.portal-gateway-cta{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:48px;padding:10px 20px;border-radius:999px;background:#fff;color:#79212d;font-size:15px;font-weight:650;white-space:nowrap;transition:background .18s,color .18s}
+.portal-gateway-cta:hover{background:#8d202c;color:#fff}
+.portal-gateway-cta svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+body.portal-home-v3 .portal-index-icon{display:flex;align-items:center;padding-top:2px}
+.portal-index-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+:is(body.portal-home-v3,body.wantedly-subpage) :is(.w-menu,.portal-story-links a,.cloud-tools a){white-space:nowrap}
+body.portal-home-v3 .cloud-home-content .cloud-section,body.wantedly-subpage .cloud-section{padding-block:24px}
+:is(body.portal-home-v3,body.wantedly-subpage) .cloud-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+:is(body.portal-home-v3,body.wantedly-subpage) .cloud-entry-grid{gap:12px}
+:is(body.portal-home-v3,body.wantedly-subpage) .cloud-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+:is(body.portal-home-v3,body.wantedly-subpage) .w-footer nav a{flex-direction:row;justify-content:space-between;align-items:center;min-height:44px;gap:12px}
+:is(body.portal-home-v3,body.wantedly-subpage) .w-footer nav a small{white-space:nowrap}
+@media(max-width:760px){body.wantedly-subpage .portal-flash-gateway{min-height:430px;border-radius:14px}.portal-flash-gateway .portal-gateway-photo{object-position:62% 50%}.portal-gateway-copy{padding:24px}.portal-gateway-kicker{font-size:13px;gap:8px;margin-bottom:16px}.portal-gateway-kicker svg{width:25px;height:25px}body.wantedly-subpage .portal-gateway-copy h1{font-size:clamp(32px,9vw,44px)}.portal-gateway-summary{font-size:15px;max-width:270px;margin-bottom:20px}}
+@media(prefers-reduced-motion:reduce){.portal-gateway-cta{transition:none}}
