@@ -165,6 +165,8 @@ body.wantedly-subpage .portal-gateway-copy h1{font-size:clamp(40px,5vw,68px);lin
 .portal-gateway-summary{max-width:390px;font-size:16px;line-height:1.7;margin:0 0 24px;color:#fff}
 .portal-gateway-cta{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:48px;padding:10px 20px;border-radius:999px;background:#fff;color:#79212d;font-size:15px;font-weight:650;white-space:nowrap;transition:background .18s,color .18s}
 .portal-gateway-cta:hover{background:#8d202c;color:#fff}
+body.wantedly-subpage .portal-flash-gateway .portal-gateway-cta{color:#79212d}
+body.wantedly-subpage .portal-flash-gateway .portal-gateway-cta:hover{color:#fff}
 .portal-gateway-cta svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 body.portal-home-v3 .portal-index-icon{display:flex;align-items:center;padding-top:2px}
 .portal-index-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
