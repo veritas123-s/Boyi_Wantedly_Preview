@@ -7,8 +7,8 @@
   },
   {
     "path": "journeys/",
-    "title": "博医之行",
-    "subtitle": "实践与项目",
+    "title": "博医之路",
+    "subtitle": "社会实践",
     "group": "main"
   },
   {
@@ -21,12 +21,6 @@
     "path": "study/",
     "title": "博医学堂",
     "subtitle": "学习与成长",
-    "group": "main"
-  },
-  {
-    "path": "activities/",
-    "title": "博医之路",
-    "subtitle": "活动与通知",
     "group": "main"
   },
   {

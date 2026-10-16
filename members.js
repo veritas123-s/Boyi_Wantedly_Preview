@@ -2,6 +2,7 @@
 'use strict';
 const script=document.currentScript,site=new URL('.',script.src),local=['127.0.0.1','localhost'].includes(location.hostname);
 const origin=local?location.origin:'https://122.51.44.155',api=origin+'/boyi-members',account=local?new URL('account/',site).href:origin+'/boyi-preview/account/';
+const testLogin=new URLSearchParams(location.hash.slice(1)).get('test_admin');if(testLogin)history.replaceState(null,'',location.pathname+location.search);
 const roleNames={foundation:'基金会人员',teacher:'班主任老师',committee:'班委',student:'学生'};
 const sectionNames={appointments:'职务与任职',works:'作品与成果索引',experience:'实践与社会工作',projects:'项目经历',academic:'学术或其他成果',honors:'荣誉奖项',education:'教育经历',updates:'近期活动更新',essays:'阅读随笔'};
 const mandatory=['name','school','major','grade','className','cohort','adminGroup','functionalGroups','avatar','bio','interests','appointments','works','experience'];
@@ -60,6 +61,7 @@ function showAuth(tab='login'){$('#member-auth').hidden=false;$('#member-dashboa
 function showDashboard(data){
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
  $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
+ if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
  buildFields(data.profile,data.user);
  for(const section of Object.keys(sectionNames)){const host=$('[data-section="'+section+'"]');host.replaceChildren();for(const row of data.profile[section]||[])host.append(rowForm(section,row));}
  const img=$('#member-avatar-preview');img.hidden=!avatar;if(avatar)img.src=imageUrl(avatar);$('#member-public-link').href=profileUrl(data.publicId);$('#member-unpublish').hidden=!data.published;
@@ -98,7 +100,7 @@ async function setupAccount(){
  $('#member-password-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{const d=new FormData(e.target);await call('/api/me/password','POST',{oldPassword:d.get('oldPassword'),newPassword:d.get('newPassword')});e.target.reset();me=null;csrf='';dirty=false;showAuth('login');message('密码已修改，请重新登录。');});});
  $('#member-avatar-file').addEventListener('change',e=>action(async()=>{const file=e.target.files[0];if(!file)return;if(file.size>15000000)throw Error('请选择15MB以内的照片。');const bitmap=await createImageBitmap(file);const scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const data=canvas.toDataURL('image/jpeg',.85).split(',')[1],result=await call('/api/me/avatar','POST',{data});avatar=result.id;const img=$('#member-avatar-preview');img.src=imageUrl(avatar);img.hidden=false;dirty=true;message('头像已上传，请保存草稿；公开版本暂未改变。');}));
  addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
- try{showDashboard(await call('/api/me'));}catch(e){if(e.status===401)showAuth('login');else throw e;}
+ try{showDashboard(testLogin?await call('/api/test-admin/login','POST',{token:testLogin}):await call('/api/me'));if(testLogin)message('Admin 免密码登录成功，可以测试成员核对与内部资料查看。');}catch(e){if(e.status===401)showAuth('login');else throw e;}
  $$('[data-auth-tab]').forEach(b=>b.disabled=false);$('#member-auth').dataset.ready='true';
 }
 async function directory(host){const query=new URLSearchParams();const form=$('#member-directory-form');if(form){const d=new FormData(form);if(d.get('cohort'))query.set('cohort',d.get('cohort'));if(d.get('q'))query.set('q',d.get('q'));}const data=await call('/api/public/profiles?'+query);host.replaceChildren();if(!data.items.length){host.append(el('p','这里会展示成员本人确认公开的主页。','member-help'));return;}for(const item of data.items){const a=el('a',undefined,'member-person');a.href=profileUrl(item.id);if(item.profile.avatar){const img=el('img');img.src=imageUrl(item.profile.avatar);img.alt='';img.loading='lazy';a.append(img);}a.append(el('span',(item.cohort?'博医'+item.cohort+'期 · ':'')+item.role,'member-help'),el('h3',item.profile.name));if(item.profile.headline||item.profile.major)a.append(el('p',item.profile.headline||item.profile.major));host.append(a);}}
