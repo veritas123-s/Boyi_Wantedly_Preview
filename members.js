@@ -10,6 +10,39 @@ const basicFields={name:'姓名或确认展示名',school:'学校或单位',majo
 const moreFields={bio:'个人简介',interests:'研究 / 交叉领域兴趣',skills:'技能',languages:'语言',publicContact:'联系方式'};
 let registrationStep=0;
 let me=null,csrf='',config=null,avatar='',busy=false,dirty=false,lastUsername='';
+let securityEpoch=0,profileSequence=0;
+const profilePrefixes=new WeakMap();
+function clearAccountState(){
+ securityEpoch++;
+ for(const id of ['member-recovery','member-private-list','member-private-view','member-manage-people','member-manage-claims','member-preview','member-candidates','member-onboarding-actions','member-basic-fields','member-more-fields','portal-security']){const node=document.getElementById(id);if(node)node.replaceChildren();}
+ for(const id of ['member-recovery','member-private-view','member-preview','portal-security','member-site-editor','member-management','member-private-management']){const node=document.getElementById(id);if(node)node.hidden=true;}
+ const root=document.getElementById('member-account-content');
+ if(root){for(const form of root.querySelectorAll('form'))form.reset();for(const input of root.querySelectorAll('input,textarea')){input.setCustomValidity('');if(!['checkbox','radio','button','submit','hidden'].includes(input.type))input.value='';}for(const section of root.querySelectorAll('[data-section]'))section.replaceChildren();}
+ for(const id of ['member-hello','member-identity','member-published-state','member-save-state','member-onboarding-note']){const node=document.getElementById(id);if(node)node.textContent='';}
+ const image=document.getElementById('member-avatar-preview');if(image){image.removeAttribute('src');image.hidden=true;}
+ const publicLink=document.getElementById('member-public-link');if(publicLink)publicLink.removeAttribute('href');
+ me=null;csrf='';avatar='';dirty=false;lastUsername='';
+}
+function securityPanel(){let panel=$('#portal-security');if(!panel){panel=el('section',undefined,'member-panel');panel.id='portal-security';$('#member-dashboard').append(panel);}return panel;}
+async function refreshSecurity(){
+ if(!me)return;
+ const epoch=++securityEpoch,userId=me.user.id,panel=securityPanel(),current=()=>!!me&&me.user.id===userId&&epoch===securityEpoch;
+ panel.hidden=false;panel.replaceChildren(el('h2','账号安全'),el('p','正在读取登录会话……','member-help'));
+ try{
+  const data=await call('/api/me/security');if(!current())return;
+  const count=Number.isInteger(data.activeSessions)&&data.activeSessions>=1?String(data.activeSessions):'暂未提供';
+  const expiry=new Date(data.currentSessionExpiresAt),expiryText=data.currentSessionExpiresAt&&!Number.isNaN(expiry.getTime())?expiry.toLocaleString('zh-CN'):'暂未提供';
+  panel.replaceChildren(el('h2','账号安全'),el('p','有效登录会话：'+count),el('p','当前会话到期：'+expiryText));
+  if(data.passwordlessTest)panel.append(el('p','当前为临时测试会话，仍受管理员到期限制。','member-help'));
+  const status=el('p','','member-help');status.setAttribute('role','status');
+  panel.append(button('退出其他会话',()=>action(async()=>{
+   if(!current())return;
+   try{const result=await call('/api/me/logout-others','POST',{});if(!current())return;if(result.ok!==true)throw Error('退出其他会话未完成，请重试。');await refreshSecurity();if(me&&me.user.id===userId)message(Number.isInteger(result.revoked)&&result.revoked>=0?'已退出其他会话，共撤销 '+result.revoked+' 个；当前会话继续有效。':'已退出其他会话，当前会话继续有效。');}
+   catch(e){if(current())status.textContent=e.message||'退出其他会话失败，请重试。';}
+  })),status);
+ }catch(e){if(!current())return;panel.replaceChildren(el('h2','账号安全'),el('p',e.message||'暂时无法读取登录会话。','member-help'),button('重新读取',()=>action(refreshSecurity)));}
+}
+function safeProfileUrl(value){try{const url=new URL(value,site);return ['https:','http:'].includes(url.protocol)?url.href:null;}catch{return null;}}
 const $=(selector,root=document)=>root.querySelector(selector),$$=(selector,root=document)=>[...root.querySelectorAll(selector)];
 function el(tag,text,className){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(className)n.className=className;return n;}
 function button(label,action,secondary=true){const b=el('button',label,'member-button'+(secondary?' secondary':''));b.type='button';b.addEventListener('click',action);return b;}
@@ -22,16 +55,33 @@ function imageUrl(id){return api+'/api/images/'+id;}
 function identityText(u){return (u.cohort?'博医'+u.cohort+'期 · ':'')+u.roleLabel+(u.identityStatus==='verified'?' · 身份已确认':' · 身份待确认');}
 function field(label,name,type='text',value='',help=''){const wrap=el('label',undefined,'member-field');wrap.append(el('span',label));const input=el(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.name=name;input.value=value;if(help)wrap.append(input,el('small',help));else wrap.append(input);return wrap;}
 function renderProfile(host,item,preview=false){
- host.replaceChildren();const p=item.profile||{},hero=el('section',undefined,'member-profile-hero'),copy=el('div');
+ host.replaceChildren();
+ if(!profilePrefixes.has(host))profilePrefixes.set(host,'portal-profile-'+(++profileSequence));
+ const prefix=profilePrefixes.get(host),p=item.profile||{},layout=el('div',undefined,'member-profile-layout'),sidebar=el('aside',undefined,'portal-profile-sidebar'),content=el('div',undefined,'portal-profile-content'),hero=el('section',undefined,'member-profile-hero'),copy=el('div'),tabs=el('nav',undefined,'portal-profile-tabs');
+ const nonempty=value=>typeof value==='string'?value.trim().length>0:value!==null&&value!==undefined&&value!=='';
+ tabs.setAttribute('aria-label','个人主页分区');
+ function section(key,title){const s=el('section',undefined,'member-profile-section');s.id=prefix+'-'+key;s.append(el('h2',title));content.append(s);const a=el('a',title);a.href='#'+s.id;tabs.append(a);return s;}
  copy.append(el('span',(item.cohort?'博医'+item.cohort+'期 · ':'')+(item.role||'个人主页')+(item.identityVerified?'':' · 本人填写'),'member-badge'),el('h1',p.name||'我的主页'));
- if(p.englishName)copy.append(el('p',p.englishName,'member-help'));if(p.headline)copy.append(el('p',p.headline,'member-headline'));if(p.school||p.major)copy.append(el('p',[p.school,p.major].filter(Boolean).join(' · ')));
- const basics=[p.grade,p.className,item.adminGroup?'第'+item.adminGroup+'行政组':'',...(item.functionalGroups||[])].filter(Boolean).join(' · ');if(basics)copy.append(el('p',basics,'member-help'));hero.append(copy);if(p.avatar){const img=el('img',undefined,'member-avatar');img.src=imageUrl(p.avatar);img.alt=(p.name||'本人')+'的头像';hero.append(img);}host.append(hero);
- for(const [key,title]of [['bio','关于我'],['interests','兴趣与方向'],['skills','技能'],['languages','语言']])if(p[key]){const s=el('section',undefined,'member-profile-section');s.append(el('h2',title),el('p',p[key]));host.append(s);}
- for(const [key,title]of Object.entries(sectionNames)){if(!p[key]?.length)continue;const s=el('section',undefined,'member-profile-section');s.append(el('h2',title));for(const row of p[key]){const r=el('article',undefined,'member-profile-item'),details=el('div');details.append(el('h3',row.title));if(row.cover){const cover=el('img',undefined,'member-work-cover');cover.src=row.cover;cover.alt=row.title;cover.loading='lazy';details.append(cover);}const meta=[row.organization,row.role,row.status,row.category].filter(Boolean).join(' · ');if(meta)details.append(el('p',meta));if(row.isPublic===false)details.append(el('span','不公开 · 内部可见','member-badge'));if(row.subtitle)details.append(el('p',row.subtitle));if(row.description)details.append(el('p',row.description));if(row.url){const a=el('a','查看链接 ↗');a.href=row.url;a.target='_blank';a.rel='noopener noreferrer';details.append(a);}r.append(el('time',row.date),details);s.append(r);}host.append(s);}
+ if(nonempty(p.englishName))copy.append(el('p',p.englishName,'member-help'));if(nonempty(p.headline))copy.append(el('p',p.headline,'member-headline'));if(nonempty(p.school)||nonempty(p.major))copy.append(el('p',[p.school,p.major].filter(nonempty).join(' · ')));
+ const basics=[p.grade,p.className,item.adminGroup?'第'+item.adminGroup+'行政组':'',...(item.functionalGroups||[])].filter(nonempty).join(' · ');if(basics)copy.append(el('p',basics,'member-help'));
+ if(p.avatar){const img=el('img',undefined,'member-avatar');img.src=imageUrl(p.avatar);img.alt=(p.name||'本人')+'的头像';hero.append(img);}else{const placeholder=el('span',Array.from(String(p.name||'').trim())[0]||'我','portal-avatar-placeholder');placeholder.setAttribute('aria-hidden','true');hero.append(placeholder);}
+ hero.append(copy);sidebar.append(hero);layout.append(sidebar,content);host.append(layout);
+ for(const [key,title]of [['bio','关于我'],['interests','兴趣与方向'],['skills','技能'],['languages','语言']])if(nonempty(p[key]))section(key,title).append(el('p',p[key]));
+ for(const [key,title]of Object.entries(sectionNames)){
+  const rows=Array.isArray(p[key])?p[key].filter(row=>row&&typeof row==='object'&&['title','date','organization','role','status','category','subtitle','description','url','cover'].some(field=>nonempty(row[field]))):[];if(!rows.length)continue;
+  const s=section(key,title);
+  for(const row of rows){const r=el('article',undefined,'member-profile-item'),details=el('div');if(nonempty(row.title))details.append(el('h3',row.title));
+   const coverUrl=row.cover&&safeProfileUrl(row.cover);if(coverUrl){const cover=el('img',undefined,'member-work-cover');cover.src=coverUrl;cover.alt=row.title||'';cover.loading='lazy';details.append(cover);}
+   const meta=[row.organization,row.role,row.status,row.category].filter(nonempty).join(' · ');if(meta)details.append(el('p',meta));if(row.isPublic===false)details.append(el('span','不公开 · 内部可见','member-badge'));if(nonempty(row.subtitle))details.append(el('p',row.subtitle));if(nonempty(row.description))details.append(el('p',row.description));
+   const rowUrl=row.url&&safeProfileUrl(row.url);if(rowUrl){const a=el('a','查看链接 ↗');a.href=rowUrl;a.target='_blank';a.rel='noopener noreferrer';details.append(a);}
+   if(nonempty(row.date))r.append(el('time',row.date));r.append(details);s.append(r);
+  }
+ }
  const voices={'zhang-jiayu':['经验与凝视——浅谈现代临床语言的形成、断裂与弥合','zhang-jiayu'],'xin-zhengye':['七月稻禾青，健康伴童行','xin-zhengye'],'bao-jiahao':['一纸问卷的温度','bao-jiahao']};
- if(item.rosterId&&voices[item.rosterId]){const [title,id]=voices[item.rosterId],s=el('section',undefined,'member-profile-section');s.append(el('h2','博医之声'),link(title+' ↗',new URL('voices/'+id+'.html',site).href));host.append(s);}
- if(p.publicContact){const s=el('section',undefined,'member-profile-section');s.append(el('h2','联系方式'),el('p',p.publicContact));host.append(s);}
- if(!preview&&item.updatedAt)host.append(el('p','最近更新：'+new Date(item.updatedAt).toLocaleDateString('zh-CN'),'member-help'));
+ if(item.rosterId&&voices[item.rosterId]){const [title,id]=voices[item.rosterId];section('voices','博医之声').append(link(title+' ↗',new URL('voices/'+id+'.html',site).href));}
+ if(nonempty(p.publicContact))section('publicContact','联系方式').append(el('p',p.publicContact));
+ if(tabs.childElementCount)sidebar.append(tabs);
+ if(!preview&&item.updatedAt){const date=new Date(item.updatedAt);if(!Number.isNaN(date.getTime()))content.append(el('p','最近更新：'+date.toLocaleDateString('zh-CN'),'member-help'));}
 }
 function visibilityButton(key,value,changed,required=mandatory.includes(key)){
  const b=button(required?'公开 · 必须公开':value?'公开':'不公开',()=>{if(required)return;value=!value;b.textContent=value?'公开':'不公开';b.setAttribute('aria-checked',String(value));b.classList.toggle('is-private',!value);changed(value);dirty=true;$('#member-save-state').textContent='公开设置有修改，请保存';});
@@ -57,11 +107,13 @@ function onboarding(data){const host=$('#member-onboarding'),actions=$('#member-
 async function privateDirectory(){const result=await call('/api/manage/profile-directory'),host=$('#member-private-list');host.replaceChildren();for(const u of result.items){const row=el('article',undefined,'member-manage-item');row.append(el('h3',u.name+' · '+(u.className||'班级待补')+' · '+(u.cohort?'博医'+u.cohort+'期':'不限定期别')),button('查看完整资料（含不公开项）',()=>action(async()=>{const result=await call('/api/manage/profiles/'+u.id),view=$('#member-private-view');view.replaceChildren(el('h2','内部查看 · '+result.user.name),el('p','包含不公开的已保存资料，仅供权限范围内查看，请勿对外转发。','member-help'));const content=el('div');renderProfile(content,{profile:result.profile,cohort:result.user.cohort,adminGroup:result.user.adminGroup,functionalGroups:result.user.functionalGroups,role:result.user.roleLabel},true);view.append(content);view.hidden=false;view.scrollIntoView({behavior:'smooth',block:'start'});})));host.append(row);}}
 async function save(){const form=$('#member-profile-form');if(!form.reportValidity())throw Error('请先补全已添加条目的标题，或删除空条目。');const data=await call('/api/me/profile','PUT',{profile:collect(),version:me.version});me={...me,...data};dirty=false;$('#member-save-state').textContent='已保存草稿 · '+new Date().toLocaleTimeString('zh-CN');return data;}
 function recoveryBox(code){const box=$('#member-recovery');box.replaceChildren(el('h2','请保存账号恢复码'),el('p','忘记密码时，可以用它重设密码。恢复码只显示这一次，请单独保存，不要发到公开主页。'),el('p',code,'member-recovery-code'));const a=button('下载恢复码',()=>{const blob=new Blob(['博医云账号恢复码\n账号：'+(lastUsername||'注册时填写的账号')+'\n恢复码：'+code+'\n请妥善保存，不要公开。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),download=el('a');download.href=url;download.download='博医云账号恢复码.txt';download.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});box.append(a,button('我已保存',()=>{box.hidden=true;box.replaceChildren();}));box.hidden=false;}
-function showAuth(tab='login'){$('#member-auth').hidden=false;$('#member-dashboard').hidden=true;if(tab==='register')registerStep(0);$('#member-private-view')?.replaceChildren();for(const t of ['login','register','recover']){$('#'+t+'-form').hidden=t!==tab;const b=$('[data-auth-tab="'+t+'"]');if(b)b.setAttribute('aria-selected',String(t===tab));}message('');}
+function showAuth(tab='login'){clearAccountState();$('#member-auth').hidden=false;$('#member-dashboard').hidden=true;if(tab==='register')registerStep(0);for(const t of ['login','register','recover']){$('#'+t+'-form').hidden=t!==tab;const b=$('[data-auth-tab="'+t+'"]');if(b)b.setAttribute('aria-selected',String(t===tab));}message('');document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:false}}));}
 function showDashboard(data){
+ const changedUser=!!me&&me.user.id!==data.user.id,registrationUsername=lastUsername;
+ if(changedUser){clearAccountState();if(data.recoveryCode)lastUsername=registrationUsername;}
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
  let editorLink=$('#member-site-editor');if(!editorLink){editorLink=document.createElement('a');editorLink.id='member-site-editor';editorLink.className='button primary';editorLink.href=api+'/editor/';editorLink.textContent='编辑网站';$('#member-hello').insertAdjacentElement('afterend',editorLink);}editorLink.hidden=!(data.user.siteOwner&&data.user.identityStatus==='verified');
- if(!editorLink.hidden&&new URLSearchParams(location.search).get('next')==='editor'){location.replace(editorLink.href);return;}
+ if(!editorLink.hidden&&new URLSearchParams(location.search).get('next')==='editor'){document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:true}}));location.replace(editorLink.href);return;}
  $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
  if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
  buildFields(data.profile,data.user);
@@ -70,6 +122,8 @@ function showDashboard(data){
  $('#member-claim').hidden=true;onboarding(data);$('#member-private-management').hidden=!(data.user.identityStatus==='verified'&&['foundation','teacher'].includes(data.user.approvedRole));
  const management=data.user.siteOwner||['foundation','teacher'].includes(data.user.approvedRole)||data.user.approvedRole==='committee'&&data.user.canVerify;$('#member-management').hidden=!management;
  dirty=false;$('#member-save-state').textContent='';$('#member-preview').hidden=true;
+ void refreshSecurity();
+ document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:true}}));
 }
 async function management(){
  const data=await call('/api/manage/pending'),members=$('#member-manage-people'),claims=$('#member-manage-claims');members.replaceChildren();claims.replaceChildren();
@@ -107,12 +161,32 @@ async function setupAccount(){
 }
 async function directory(host){const query=new URLSearchParams();const form=$('#member-directory-form');if(form){const d=new FormData(form);if(d.get('cohort'))query.set('cohort',d.get('cohort'));if(d.get('q'))query.set('q',d.get('q'));}const data=await call('/api/public/profiles?'+query);host.replaceChildren();if(!data.items.length){host.append(el('p','这里会展示成员本人确认公开的主页。','member-help'));return;}for(const item of data.items){const a=el('a',undefined,'member-person');a.href=profileUrl(item.id);if(item.profile.avatar){const img=el('img');img.src=imageUrl(item.profile.avatar);img.alt='';img.loading='lazy';a.append(img);}a.append(el('span',(item.cohort?'博医'+item.cohort+'期 · ':'')+item.role,'member-help'),el('h3',item.profile.name));if(item.profile.headline||item.profile.major)a.append(el('p',item.profile.headline||item.profile.major));host.append(a);}}
 async function publicPage(){const host=$('#member-public-profile'),id=new URLSearchParams(location.search).get('id');if(id){const data=await call('/api/public/profiles/'+encodeURIComponent(id));$('#member-profile-heading').hidden=true;renderProfile(host,data.item);document.title=data.item.profile.name+' | 博医云';$('#member-profile-heading').setAttribute('aria-label',data.item.profile.name);$('#member-directory-area').hidden=true;}else{$('#member-profile-heading').textContent='成员主页';const form=$('#member-directory-form');form.addEventListener('submit',e=>{e.preventDefault();action(()=>directory($('#member-directory')));});await directory($('#member-directory'));}}
-async function legacyProfile(){const main=$('main[data-student-id]');if(!main)return;const data=await call('/api/public/roster/'+encodeURIComponent(main.dataset.studentId));if(!data.claimed)return;if(data.published){const host=el('div');renderProfile(host,data.item);main.replaceChildren(host);main.classList.add('member-main');}else{main.replaceChildren(el('h1','主页暂未公开'),el('p','本人尚未公开这份资料。'));} }
+async function legacyProfile(){
+ const main=$('main[data-student-id]');if(!main)return;
+ main.replaceChildren(el('p','正在加载个人主页……','member-help'));
+ try{
+  const data=await call('/api/public/legacy/'+encodeURIComponent(main.dataset.studentId));
+  if(data.kind==='legacy'){
+   if(typeof data.mainHtml!=='string')throw Error('档案内容暂时无法读取。');
+   const parsed=new DOMParser().parseFromString(data.mainHtml,'text/html');
+   parsed.querySelectorAll('script,iframe,object,embed,base,meta,link').forEach(node=>node.remove());
+   for(const node of parsed.querySelectorAll('*'))for(const attribute of [...node.attributes]){
+    const name=attribute.name.toLowerCase(),value=attribute.value.replace(/[\u0000-\u0020\u007f-\u009f]/g,'').toLowerCase();
+    if(name.startsWith('on')||name==='srcdoc'||(['href','src','xlink:href','action','formaction'].includes(name)&&value.startsWith('javascript:')))node.removeAttribute(attribute.name);
+   }
+   const source=parsed.querySelector('main');if(!source)throw Error('档案内容暂时无法读取。');
+   main.replaceChildren(...[...source.children].map(node=>document.importNode(node,true)));
+  }else if(data.kind==='profile'&&data.item){const host=el('div');renderProfile(host,data.item);main.replaceChildren(host);main.classList.add('member-main');}
+  else if(data.kind==='unpublished')main.replaceChildren(el('h1','主页暂未公开'),el('p','本人尚未公开这份资料。'));
+  else throw Error('档案内容暂时无法读取。');
+ }catch(e){main.replaceChildren(el('h1','暂时无法加载主页'),el('p','请稍后重试。当前未展示档案内容。','member-help'),button('重新加载',()=>{void legacyProfile();}));}
+ document.dispatchEvent(new CustomEvent('boyi:profile-ready'));
+}
 async function init(){
  const header=$('.w-header'),menu=$('.w-menu',header||document);if(header&&menu){const a=el('a','我的主页','boyi-account-entry');a.href=account;header.insertBefore(a,menu);}
  if($('#member-account-content')){try{await setupAccount();}catch(e){message(e.message||'暂时无法连接账号服务。');}return;}
  if($('#member-public-profile')){try{await publicPage();}catch(e){message(e.message);$('#member-public-profile').replaceChildren(el('p','这个主页暂未公开，或账号服务暂时不可用。'));}return;}
- if($('main[data-student-id]'))legacyProfile().catch(()=>{});
+ if($('main[data-student-id]'))void legacyProfile();
  if(location.pathname.endsWith('/window/students/')){const main=$('main');if(main){const section=el('section',undefined,'member-directory-slot');section.append(el('h2','成员自己维护的主页'),link('查看所有成员主页',new URL('people/',site).href),link('注册 / 维护我的主页',account));const list=el('div',undefined,'member-directory');section.append(list);main.append(section);directory(list).catch(()=>list.append(el('p','账号服务暂时不可用，请稍后查看。','member-help')));}}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

@@ -1,7 +1,8 @@
-(() => {
+function initializeStudentProfile(){
 'use strict';
 const root = document.querySelector('.student-profile');
-if (!root) return;
+if (!root || !root.querySelector('[data-profile-filter],[data-profile-detail]') || root.dataset.profileBound==='true') return;
+root.dataset.profileBound='true';
 const filters = [...root.querySelectorAll('[data-profile-filter]')];
 const cards = [...root.querySelectorAll('[data-profile-category]')];
 const status = root.querySelector('.student-filter-status');
@@ -23,4 +24,6 @@ for (const button of root.querySelectorAll('[data-profile-detail]')) button.addE
 });
 dialog?.querySelector('[data-profile-close]')?.addEventListener('click', () => dialog.close());
 dialog?.addEventListener('close', () => opener?.focus());
-})();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initializeStudentProfile,{once:true});else initializeStudentProfile();
+document.addEventListener('boyi:profile-ready',initializeStudentProfile);
