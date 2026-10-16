@@ -60,6 +60,8 @@ function recoveryBox(code){const box=$('#member-recovery');box.replaceChildren(e
 function showAuth(tab='login'){$('#member-auth').hidden=false;$('#member-dashboard').hidden=true;if(tab==='register')registerStep(0);$('#member-private-view')?.replaceChildren();for(const t of ['login','register','recover']){$('#'+t+'-form').hidden=t!==tab;const b=$('[data-auth-tab="'+t+'"]');if(b)b.setAttribute('aria-selected',String(t===tab));}message('');}
 function showDashboard(data){
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
+ let editorLink=$('#member-site-editor');if(!editorLink){editorLink=document.createElement('a');editorLink.id='member-site-editor';editorLink.className='button primary';editorLink.href=api+'/editor/';editorLink.textContent='编辑网站';$('#member-hello').insertAdjacentElement('afterend',editorLink);}editorLink.hidden=!(data.user.siteOwner&&data.user.identityStatus==='verified');
+ if(!editorLink.hidden&&new URLSearchParams(location.search).get('next')==='editor'){location.replace(editorLink.href);return;}
  $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
  if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
  buildFields(data.profile,data.user);
