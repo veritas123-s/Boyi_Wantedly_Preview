@@ -270,3 +270,5 @@ body.portal-home-v3 .portal-photo-join{min-height:0;height:420px;margin:0;border
 @media(prefers-reduced-motion:reduce){.portal-photo-join .photo-wall img{animation:none}}
 
 .portal-credit{font-size:12px;line-height:1.7;color:#777;max-width:100%;text-wrap:pretty}@media(max-width:760px){.portal-credit{flex-basis:100%}}
+/* Desktop has one navigation only; compact scrolling no longer duplicates it. */
+@media(min-width:1024px){:is(body.portal-home-v3,body.wantedly-subpage) .w-header .w-menu{display:none!important}:is(body.portal-home-v3,body.wantedly-subpage) .w-header .w-nav{display:flex!important}:is(body.portal-home-v3,body.wantedly-subpage) .w-menu-panel{display:none!important}:is(body.portal-home-v3,body.wantedly-subpage) .w-header{gap:20px!important}}
