@@ -76,7 +76,7 @@ function renderProfile(host,item,preview=false){
  const basics=[p.grade,p.className,item.adminGroup?'第'+item.adminGroup+'行政组':'',...(item.functionalGroups||[])].filter(nonempty).join(' · ');if(basics)copy.append(el('p',basics,'member-help'));
  const portrait=el('img',undefined,'member-avatar');portrait.alt=(p.name||'本人')+'的头像';
  if(profileAvatar(portrait,p.avatar,item.legacyAvatarSrc))hero.append(portrait);else{const placeholder=el('span',Array.from(String(p.name||'').trim())[0]||'我','portal-avatar-placeholder');placeholder.setAttribute('aria-hidden','true');hero.append(placeholder);}
- hero.append(copy);sidebar.append(hero);layout.append(sidebar,content);host.append(layout);
+ hero.append(copy);sidebar.append(hero);if(portrait.classList.contains('member-avatar-card')){const original=link('查看原人物卡片 ↗',portrait.src);original.target='_blank';original.rel='noopener';sidebar.append(original);}layout.append(sidebar,content);host.append(layout);
  for(const [key,title]of [['bio','关于我'],['interests','兴趣与方向'],['skills','技能'],['languages','语言']])if(nonempty(p[key]))section(key,title).append(el('p',p[key]));
  for(const [key,title]of Object.entries(sectionNames)){
   const rows=Array.isArray(p[key])?p[key].filter(row=>row&&typeof row==='object'&&['title','date','organization','role','status','category','subtitle','description','url','cover'].some(field=>nonempty(row[field]))):[];if(!rows.length)continue;
