@@ -294,3 +294,4 @@ body.portal-home-v3 .portal-wall-invitation h2{font-size:clamp(23px,3.4vw,44px);
 @media(max-width:760px){.portal-contact{grid-template-columns:minmax(0,1fr);justify-items:center;gap:16px;padding:24px 16px;border-radius:10px}.portal-contact-copy{text-align:center;max-width:100%}.portal-contact-marks{margin:0 auto 10px;width:180px}.portal-contact-school{font-size:18px}.portal-contact-name{font-size:clamp(11px,3.6vw,16px)}.portal-contact-mail{font-size:17px}}
 
 .portal-contact-marks img{mix-blend-mode:lighten}
+@media(max-width:760px){.portal-contact-qr{width:208px;height:220.16px}}
