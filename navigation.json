@@ -1,0 +1,86 @@
+[
+  {
+    "path": "window/",
+    "title": "博医之窗",
+    "subtitle": "计划与人物",
+    "group": "main"
+  },
+  {
+    "path": "journeys/",
+    "title": "博医之行",
+    "subtitle": "实践与项目",
+    "group": "main"
+  },
+  {
+    "path": "voices/",
+    "title": "博医之声",
+    "subtitle": "文章与音视频",
+    "group": "main"
+  },
+  {
+    "path": "study/",
+    "title": "博医学堂",
+    "subtitle": "学习与成长",
+    "group": "main"
+  },
+  {
+    "path": "activities/",
+    "title": "博医之路",
+    "subtitle": "活动与通知",
+    "group": "main"
+  },
+  {
+    "path": "ask/",
+    "title": "博医云伴",
+    "subtitle": "数字馆员",
+    "group": "tools"
+  },
+  {
+    "path": "window/students/",
+    "title": "五期学员",
+    "subtitle": "认识同伴",
+    "group": "tools"
+  },
+  {
+    "path": "window/mentors/",
+    "title": "导师与指导",
+    "subtitle": "资料待补",
+    "group": "tools"
+  },
+  {
+    "path": "journeys/photos/",
+    "title": "六安实践影像",
+    "subtitle": "120张现场记录",
+    "group": "tools"
+  },
+  {
+    "path": "gallery/",
+    "title": "影像集",
+    "subtitle": "18则纪实",
+    "group": "tools"
+  },
+  {
+    "path": "reflections/",
+    "title": "实践感想",
+    "subtitle": "成员心声",
+    "group": "tools"
+  },
+  {
+    "path": "feedback/",
+    "title": "留下回声",
+    "subtitle": "交流反馈",
+    "group": "tools"
+  },
+  {
+    "path": "status/",
+    "title": "建设进度",
+    "subtitle": "已做与待补",
+    "group": "tools"
+  },
+  {
+    "path": "account/",
+    "title": "我的主页",
+    "subtitle": "注册与维护",
+    "group": "tools"
+  }
+]

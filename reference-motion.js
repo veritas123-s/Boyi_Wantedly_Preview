@@ -252,7 +252,7 @@ function footerThumbnail() {
  if(!image || footerThumbState) return;
  const host=el('div','w-footer-photo rm-footer-thumb');
  image.replaceWith(host); image.classList.remove('w-footer-photo'); image.classList.add('rm-footer-slide','rm-footer-slide-active'); host.append(image);
- const urls=[image.src,new URL('media/photos/009.jpg',script?.src||location.href).href,new URL('media/photos/001.jpg',script?.src||location.href).href];
+ const extra=(image.dataset.footerPhotos||'').split(',').filter(Boolean).map(p=>new URL(p,script?.src||location.href).href); const urls=[image.src,...(extra.length?extra:[new URL('media/photos/009.jpg',script?.src||location.href).href,new URL('media/photos/001.jpg',script?.src||location.href).href])];
  footerThumbState={host,image,urls,index:0,time:0,pending:false}; watch(host);
 }
 function advanceFooter(seconds) {
