@@ -577,7 +577,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   B(door,brass,0,2.45,.15,.62,.25,.025);
   const plaqueTexture=canvasTexture(512,(c,s)=>{c.fillStyle='#68422b';c.fillRect(0,0,s,s);c.strokeStyle='#b49b68';c.lineWidth=8;c.strokeRect(15,15,s-30,s-30);c.fillStyle='#dfcea9';c.textAlign='center';c.font='52px Georgia, serif';c.fillText('BOYI',s/2,235);c.font='29px Georgia, serif';c.fillText('THE STUDY',s/2,308);});
   mesh(door,G(new THREE.PlaneGeometry(.56,.19)),standard({map:plaqueTexture,roughness:.6}),[0,2.45,.168]);
-  interact('door','回到博医造物',door,[0,1.6,6.66]);
+  interact('door','回到会客大厅',door,[0,1.6,6.66]);
 
   // Chandelier: warm wax, blackened brass and a single shadow-casting light.
   const chandelier=group('A circle of candlelight',root,[0,4.35,1.25]);
@@ -743,7 +743,7 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
   function companionAnchor(){
     const sin=Math.sin(viewer.yaw),cos=Math.cos(viewer.yaw);
     const forward=spiritState==='idle'?1.65:1.6,baseRight=spiritState==='idle'?.95:1.0;
-    const right=viewer.aspect<.85?Math.min(baseRight,forward*Math.tan(34*Math.PI/180)*viewer.aspect*.52):baseRight;
+    const right=viewer.aspect<.85?Math.min(baseRight,forward*Math.tan(34*Math.PI/180)*viewer.aspect*.48):baseRight;
     desired.set(viewer.x+cos*right-sin*forward,clamp(viewer.y-.13,1.2,2.3),viewer.z-sin*right-cos*forward);
     desired.x=clamp(desired.x,-5.18,5.18);desired.z=clamp(desired.z,-6.1,6.1);
     // Keep the little spirit in front of solid shelves and furniture. Testing
@@ -778,7 +778,7 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
       if(gesture){
         const u=clamp((t-gesture.started)/gesture.duration,0,1),ease=u*u*(3-2*u),pulse=Math.sin(Math.PI*u);
         if(gesture.kind===0){offset.y+=pulse*pulse*.32;roll=Math.PI*2*ease;}
-        else if(gesture.kind===1){const a=ease*Math.PI*2;offset.x=Math.sin(a)*.17*pulse;offset.z=(Math.cos(a)-1)*.12*pulse;offset.y+=pulse*.19;roll=Math.sin(a)*.1;}
+        else if(gesture.kind===1){const a=ease*Math.PI*2,portrait=viewer.aspect<.75;offset.x=Math.sin(a)*.17*pulse*(portrait?.28:1);offset.z=(Math.cos(a)-1)*.12*pulse*(portrait?.4:1);offset.y+=pulse*.19;roll=Math.sin(a)*.1;}
         else{nod=Math.sin(u*Math.PI*5)*pulse*.14;offset.y+=pulse*.07;}
         if(u>=1){gesture=null;nextGesture=t+8+random()*8;roll=0;}
       }
@@ -813,7 +813,7 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
     setViewerPose(pose={}) {
       if(disposed||![pose.x,pose.y,pose.z,pose.yaw].every(Number.isFinite))return;
       Object.assign(viewer,{x:pose.x,y:pose.y,z:pose.z,yaw:pose.yaw,pitch:Number.isFinite(pose.pitch)?pose.pitch:0,aspect:Number.isFinite(pose.aspect)&&pose.aspect>0?clamp(pose.aspect,.2,4):viewer.aspect});
-      sprite.scale.setScalar(viewer.aspect<.75?.245:.29);
+      sprite.scale.setScalar(viewer.aspect<.75?.215:.29);
       if(!viewerSeen){viewerSeen=true;followBase.copy(companionAnchor());sprite.position.copy(followBase);sprite.rotation.y=Math.atan2(viewer.x-sprite.position.x,viewer.z-sprite.position.z);}
     },
     setSpriteState(state='idle') {
