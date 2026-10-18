@@ -5,3 +5,9 @@
 .arrival{overflow:hidden}.close-dialog{position:relative;z-index:2;min-width:36px;min-height:36px}
 
 #cycle-view{min-width:94px}#open-sprite{border-color:#dfc79499}@media(max-width:760px){#resume-look{display:none}.room-bottom{gap:6px;max-width:calc(100vw - 20px)}.room-bottom button{padding:12px 10px;font-size:11px}#cycle-view{min-width:72px}}@media(max-width:360px){.room-bottom{gap:4px}.room-bottom button{padding:11px 8px;font-size:10px}#cycle-view{min-width:66px}#people-count{margin-left:2px;padding:1px 3px}}
+.cottage-direct-entry .arrival{justify-content:center;text-align:center}
+.cottage-direct-entry .arrival-copy>*:not(#load-status),.cottage-direct-entry .arrival-mark,.cottage-direct-entry .arrival-skip{display:none}
+.cottage-direct-entry #load-status{font-size:18px;line-height:1.8;margin:0;color:#e9dcc5}
+.cottage-direct-entry #load-status:before{content:"";display:block;width:32px;height:32px;margin:0 auto 22px;border:2px solid #e5cf9d35;border-top-color:#e5cf9d;border-radius:50%;animation:direct-loading 1.1s linear infinite}
+@keyframes direct-loading{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.cottage-direct-entry #load-status:before{animation:none}}

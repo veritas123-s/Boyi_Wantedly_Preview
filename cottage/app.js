@@ -1,9 +1,10 @@
-import {createSocialClient} from './social.js?v=dbdd8be50d9a';
+import {createSocialClient} from './social.js?v=fa4570026252';
 import {createAvatar} from './avatars.js?v=ed78e4b20e49';
 const $ = selector => document.querySelector(selector);
 const view=$('#room-view'),enter=$('#enter-room'),arrival=$('#arrival'),hud=$('#room-hud'),dialog=$('#room-dialog');
 const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches,coarse=matchMedia('(pointer:coarse)').matches;
 const allowedQuality=['high','balanced','smooth'];
+const directEntry=new URLSearchParams(location.search).get('enter')==='cottage';
 const getLocal=(key,fallback='')=>{try{return localStorage.getItem(key)||fallback;}catch{return fallback;}};
 const setLocal=(key,value)=>{try{localStorage.setItem(key,value);return true;}catch{return false;}};
 let quality=getLocal('boyi-cottage-quality',coarse?'smooth':'balanced');if(!allowedQuality.includes(quality))quality='balanced';$('#quality').value=quality;
@@ -51,7 +52,7 @@ async function loadTextures(){
  await Promise.all(Object.entries(maps).map(async([key,file])=>{try{const t=await loader.loadAsync(base+file);if(key.endsWith('Color')||key.endsWith('Logo'))t.colorSpace=THREE.SRGBColorSpace;if(!key.endsWith('Logo'))t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=quality==='smooth'?2:4;textures[key]=t;}catch{statistics.textureFailures.push(file);}}));
 }
 async function switchRoom(room){if(room===currentRoom&&world)return;if(switching)await switching;if(room===currentRoom&&world)return;switching=(async()=>{clearInput();hover=null;$('#interact').hidden=true;const module=await import(room==='cottage'?'./scene.js?v=5f08594c7f73':'./lobby.js?v=baba569b4dc6');const next=(room==='cottage'?module.createCottageScene:module.createLobbyScene)(THREE,scene,{textures,quality,reduced});world?.dispose();world=next;currentRoom=room;collectCameraSolids();applySpawn(world.spawn);Object.assign(statistics,world.stats);if(dialog.open)closePanel();notify(room==='cottage'?'欢迎来到博医小屋':'回到会客大厅');})();try{await switching;}finally{switching=null;}}
-async function start(){if(initializing||running)return;initializing=true;enter.disabled=true;$('#load-status').textContent='正在准备会客大厅…';
+async function start(){if(initializing||running)return;initializing=true;enter.disabled=true;$('#load-status').textContent=directEntry?'正在进入场景…':'正在准备会客大厅…';
  try{
   THREE=await import('../vendor/three/three.webgpu.js?v=c6b225365368');
   renderer=new THREE.WebGPURenderer({antialias:quality!=='smooth',powerPreference:'high-performance',forceWebGL:new URLSearchParams(location.search).get('renderer')==='webgl',alpha:false});
@@ -59,11 +60,20 @@ async function start(){if(initializing||running)return;initializing=true;enter.d
   scene=new THREE.Scene();scene.background=new THREE.Color('#26333a');scene.fog=new THREE.Fog('#293133',9,23);camera=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.08,40);raycaster=new THREE.Raycaster();cameraRay=new THREE.Raycaster();player=new THREE.Vector3();cameraTarget=new THREE.Vector3();cameraDesired=new THREE.Vector3();cameraDirection=new THREE.Vector3();
   await loadTextures();await switchRoom('lobby');resize();world.update(0,0);
   await renderer.compileAsync(scene,camera);renderer.render(scene,camera);
-  statistics.backend=renderer.backend?.isWebGPUBackend?'webgpu':'webgl2';statistics.ready=true;Object.assign(statistics,world.stats);arrival.hidden=true;hud.hidden=false;running=true;bindView();social=createSocialClient({THREE,scene,camera,player,getYaw:()=>yaw,onSpawn:applySpawn,openPanel,notice:notify,onRoomChange:switchRoom});social.join();schedule();notify(coarse?'左手走动，右手环顾':'W A S D 走动 · E 互动 · R 云伴 · 1 / 2 / 3 视角');
+  statistics.backend=renderer.backend?.isWebGPUBackend?'webgpu':'webgl2';statistics.ready=true;Object.assign(statistics,world.stats);if(!directEntry){arrival.hidden=true;hud.hidden=false;}running=true;bindView();social=createSocialClient({THREE,scene,camera,player,getYaw:()=>yaw,onSpawn:applySpawn,openPanel,notice:notify,onRoomChange:switchRoom});schedule();
+  const joined=await social.join();
+  if(directEntry&&joined&&social.getSelf()?.canEnterCottage){
+   const needsAvatarChoice=dialog.open&&!$('#room-dialog [data-panel="avatar"]').hidden;
+   await social.enterRoom('cottage');
+   if(needsAvatarChoice&&social.getSelf()?.room==='cottage')$('#choose-avatar').click();
+  }
+  arrival.hidden=true;hud.hidden=false;
+  if(joined)notify(coarse?'左手走动，右手环顾':'W A S D 走动 · E 互动 · R 云伴 · 1 / 2 / 3 视角');
  }catch(error){statistics.error=error.name||'RendererError';renderer?.dispose();view.replaceChildren();world?.dispose();failScene('当前浏览器暂时无法显示三维场景，你仍可使用小屋里的书架、书桌和云伴');}
  finally{initializing=false;enter.disabled=false;}
 }
-enter.onclick=()=>{if(location.hostname==='veritas123-s.github.io'){location.href='https://122.51.44.155/boyi-preview/cottage/';return;}start();};
+function enterScene(){if(location.hostname==='veritas123-s.github.io'){location.replace('https://122.51.44.155/boyi-preview/cottage/'+(directEntry?'?enter=cottage':''));return;}start();}
+enter.onclick=enterScene;
 async function requestLook(){if(!running||dialog.open||coarse)return;try{await renderer.domElement.requestPointerLock?.();}catch{notify('按住画面拖动，也可以环顾小屋');}}
 $('#resume-look').onclick=requestLook;
 function bindView(){const canvas=renderer.domElement;
@@ -81,3 +91,4 @@ addEventListener('keyup',e=>{keys.delete(e.code);blockedKeys.delete(e.code);});a
 addEventListener('pagehide',()=>{running=false;if(frameId)cancelAnimationFrame(frameId);social?.leave();ownAvatar?.dispose();world?.dispose();renderer?.dispose();Object.values(textures).forEach(t=>t.dispose());},{once:true});
 // Read-only diagnostics: true player coordinates and the independent render camera.
 window.boyiCottage={getStats:()=>({...statistics,fps:frames.length?+(frames.length/frames.reduce((a,b)=>a+b,0)).toFixed(1):0,position:player?{x:player.x,z:player.z}:null,player:player?{x:player.x,y:player.y,z:player.z,yaw}:null,camera:camera?{x:camera.position.x,y:camera.position.y,z:camera.position.z}:null,viewMode,ownAvatar:ownAvatar?{avatarId:ownSignature.split(':')[0],variant:Number(ownSignature.split(':')[1]),visible:ownAvatar.root.visible,x:ownAvatar.root.position.x,z:ownAvatar.root.position.z}:null,fairyVisible:world?.root.getObjectByName('Boyi cloud spirit')?.visible??null,yaw,pitch,dialog:dialog.open,fire,night,room:currentRoom,social:social?.getStats()||null,interactions:world?.interactables.map(i=>({id:i.id,label:i.label}))||[]})};
+if(directEntry)enterScene();
