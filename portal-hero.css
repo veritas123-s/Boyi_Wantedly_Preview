@@ -40,3 +40,4 @@ body.portal-home-v3 #brand .opening-note{display:block;font-family:BoyiMottoKai,
 
 @media(min-width:1024px){.portal-hero-mark{top:18svh}.portal-hero-copy{top:calc(18svh + min(19.5vw,24.5svh,320px) + 32px)}}
 @media(min-width:1024px) and (max-height:800px){.portal-hero-mark{top:12svh}.portal-hero-copy{top:calc(12svh + 24svh + 24px)}}
+@media(max-width:760px){body.portal-home-v3 #brand.portal-brand-hero{height:calc(376px + 66.65vw);min-height:610px;max-height:760px}.portal-hero-image{top:340px}}

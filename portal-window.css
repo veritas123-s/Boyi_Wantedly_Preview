@@ -2,3 +2,5 @@
 .portal-window-plan,.portal-org-original{min-width:0;max-width:100%}.portal-window-plan .section-head .rm-title{overflow:hidden}.portal-window-plan .rm-layer{padding:0!important}
 .wantedly-subpage .rm-title{overflow:hidden}
 body.wantedly-subpage{overflow-x:clip}
+
+.portal-org-original,#window-groups{scroll-margin-top:48px}
