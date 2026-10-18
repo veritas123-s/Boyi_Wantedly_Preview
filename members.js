@@ -66,6 +66,7 @@ function identityText(u){return (u.siteOwner?'站点管理员 · ':'')+(u.cohort
 function field(label,name,type='text',value='',help=''){const wrap=el('label',undefined,'member-field');wrap.append(el('span',label));const input=el(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.name=name;input.value=value;if(help)wrap.append(input,el('small',help));else wrap.append(input);return wrap;}
 function renderProfile(host,item,preview=false){
  host.replaceChildren();
+ if(item.rosterId)host.dataset.publicRosterId=item.rosterId;else delete host.dataset.publicRosterId;
  if(!profilePrefixes.has(host))profilePrefixes.set(host,'portal-profile-'+(++profileSequence));
  const prefix=profilePrefixes.get(host),p=item.profile||{},layout=el('div',undefined,'member-profile-layout'),sidebar=el('aside',undefined,'portal-profile-sidebar'),content=el('div',undefined,'portal-profile-content'),hero=el('section',undefined,'member-profile-hero'),copy=el('div'),tabs=el('nav',undefined,'portal-profile-tabs');
  const nonempty=value=>typeof value==='string'?value.trim().length>0:value!==null&&value!==undefined&&value!=='';
@@ -93,6 +94,7 @@ function renderProfile(host,item,preview=false){
  if(nonempty(p.publicContact))section('publicContact','联系方式').append(el('p',p.publicContact));
  if(tabs.childElementCount)sidebar.append(tabs);
  if(!preview&&item.updatedAt){const date=new Date(item.updatedAt);if(!Number.isNaN(date.getTime()))content.append(el('p','最近更新：'+date.toLocaleDateString('zh-CN'),'member-help'));}
+ document.dispatchEvent(new CustomEvent('boyi:public-profile-rendered'));
 }
 function visibilityButton(key,value,changed,required=mandatory.includes(key)){
  const b=button(required?'公开 · 必须公开':value?'公开':'不公开',()=>{if(required)return;value=!value;b.textContent=value?'公开':'不公开';b.setAttribute('aria-checked',String(value));b.classList.toggle('is-private',!value);changed(value);dirty=true;$('#member-save-state').textContent='公开设置有修改，请保存';});
@@ -165,6 +167,7 @@ async function management(){
 }
 async function setupAccount(){
  if(!local&&location.origin!==origin){$('#member-account-content').replaceChildren(el('h1','登录博医云'),el('p','账号与个人资料保存在腾讯云。请从下面的入口注册、登录和维护主页。'),link('前往账号中心',account,false));return;}
+ if(local){const note=el('aside',undefined,'member-panel');note.setAttribute('aria-label','预览账号说明');note.append(el('p','这是本地预览，正式网站账号请从正式入口登录。'),link('打开正式登录页 ↗','https://122.51.44.155/boyi-preview/account/'));$('#member-account-content').prepend(note);}
  config=await call('/api/config');const cohorts=$('#register-cohort');for(const n of config.cohorts){const option=el('option','博医'+n+'期');option.value=n;option.selected=n===5;cohorts.append(option);}
  $$('[data-auth-tab]').forEach(b=>b.addEventListener('click',()=>showAuth(b.dataset.authTab)));
  $('#member-forgot').addEventListener('click',()=>showAuth('recover'));
@@ -187,7 +190,7 @@ async function setupAccount(){
  try{showDashboard(testLogin?await call('/api/test-admin/login','POST',{token:testLogin}):await call('/api/me'));if(testLogin)message('Admin 免密码登录成功，可以测试成员核对与内部资料查看。');}catch(e){if(e.status===401)showAuth('login');else throw e;}
  $$('[data-auth-tab]').forEach(b=>b.disabled=false);$('#member-auth').dataset.ready='true';
 }
-async function directory(host){const query=new URLSearchParams();const form=$('#member-directory-form');if(form){const d=new FormData(form);if(d.get('cohort'))query.set('cohort',d.get('cohort'));if(d.get('q'))query.set('q',d.get('q'));}const data=await call('/api/public/profiles?'+query);host.replaceChildren();if(!data.items.length){host.append(el('p','这里会展示成员本人确认公开的主页。','member-help'));return;}for(const item of data.items){const a=el('a',undefined,'member-person');a.href=profileUrl(item.id);if(item.profile.avatar){const img=el('img');img.src=imageUrl(item.profile.avatar);img.alt='';img.loading='lazy';a.append(img);}a.append(el('span',(item.cohort?'博医'+item.cohort+'期 · ':'')+item.role,'member-help'),el('h3',item.profile.name));if(item.profile.headline||item.profile.major)a.append(el('p',item.profile.headline||item.profile.major));host.append(a);}}
+async function directory(host){const query=new URLSearchParams();const form=$('#member-directory-form');if(form){const d=new FormData(form);if(d.get('cohort'))query.set('cohort',d.get('cohort'));if(d.get('q'))query.set('q',d.get('q'));}const data=await call('/api/public/profiles?'+query);host.replaceChildren();if(!data.items.length){host.append(el('p','这里会展示成员本人确认公开的主页。','member-help'));return;}for(const item of data.items){const a=el('a',undefined,'member-person');a.href=profileUrl(item.id);if(item.rosterId)a.dataset.publicRosterId=item.rosterId;if(item.profile.avatar){const img=el('img');img.src=imageUrl(item.profile.avatar);img.alt='';img.loading='lazy';a.append(img);}a.append(el('span',(item.cohort?'博医'+item.cohort+'期 · ':'')+item.role,'member-help'),el('h3',item.profile.name));if(item.profile.headline||item.profile.major)a.append(el('p',item.profile.headline||item.profile.major));host.append(a);}document.dispatchEvent(new CustomEvent('boyi:public-profile-rendered'));}
 async function publicPage(){const host=$('#member-public-profile'),id=new URLSearchParams(location.search).get('id');if(id){const data=await call('/api/public/profiles/'+encodeURIComponent(id));$('#member-profile-heading').hidden=true;renderProfile(host,data.item);document.title=data.item.profile.name+' | 博医云';$('#member-profile-heading').setAttribute('aria-label',data.item.profile.name);$('#member-directory-area').hidden=true;}else{$('#member-profile-heading').textContent='成员主页';const form=$('#member-directory-form');form.addEventListener('submit',e=>{e.preventDefault();action(()=>directory($('#member-directory')));});await directory($('#member-directory'));}}
 async function legacyProfile(){
  const main=$('main[data-student-id]');if(!main)return;

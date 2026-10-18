@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "people": [
+    {
+      "id": "bao-jiahao",
+      "name": "包佳昊",
+      "src": "media/portraits/bao-jiahao.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-02",
+      "name": "陈奕萱",
+      "src": "media/portraits/student-02.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-04",
+      "name": "都泓毅",
+      "src": "media/portraits/student-04.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "宣传组组长"
+    },
+    {
+      "id": "student-05",
+      "name": "黄子桐",
+      "src": "media/portraits/student-05.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-06",
+      "name": "李家树",
+      "src": "media/portraits/student-06.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "学习组组长"
+    },
+    {
+      "id": "student-07",
+      "name": "刘姝艺",
+      "src": "media/portraits/student-07.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "第五行政组组长"
+    },
+    {
+      "id": "student-09",
+      "name": "罗心妍",
+      "src": "media/portraits/student-09.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-10",
+      "name": "吕秋瑶",
+      "src": "media/portraits/student-10.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-11",
+      "name": "毛禹然",
+      "src": "media/portraits/student-11.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "组织组组长"
+    },
+    {
+      "id": "student-12",
+      "name": "梅家琳",
+      "src": "media/portraits/student-12.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-13",
+      "name": "穆凯代斯·阿不都艾尼",
+      "src": "media/portraits/student-13.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "第一行政组组长"
+    },
+    {
+      "id": "student-14",
+      "name": "彭芷蕊",
+      "src": "media/portraits/student-14.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-15",
+      "name": "田韵笛",
+      "src": "media/portraits/student-15.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-16",
+      "name": "王鑫迪",
+      "src": "media/portraits/student-16.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-17",
+      "name": "吴辰呈",
+      "src": "media/portraits/student-17.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-18",
+      "name": "谢雨轩",
+      "src": "media/portraits/student-18.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "xin-zhengye",
+      "name": "辛政烨",
+      "src": "media/portraits/xin-zhengye.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-20",
+      "name": "熊睿帆",
+      "src": "media/portraits/student-20.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-21",
+      "name": "徐薄雯",
+      "src": "media/portraits/student-21.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-22",
+      "name": "闫好",
+      "src": "media/portraits/student-22.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-23",
+      "name": "颜语",
+      "src": "media/portraits/student-23.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "第二行政组组长"
+    },
+    {
+      "id": "zhang-jiayu",
+      "name": "张家羽",
+      "src": "media/portraits/zhang-jiayu.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "第三行政组组长"
+    },
+    {
+      "id": "student-25",
+      "name": "张敏行",
+      "src": "media/portraits/student-25.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "班长"
+    },
+    {
+      "id": "student-26",
+      "name": "张琬欣",
+      "src": "media/portraits/student-26.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-27",
+      "name": "张文玥",
+      "src": "media/portraits/student-27.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-28",
+      "name": "张昕媛",
+      "src": "media/portraits/student-28.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "实践组组长"
+    },
+    {
+      "id": "student-29",
+      "name": "郑皓",
+      "src": "media/portraits/student-29.webp",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "student-30",
+      "name": "庄文浩",
+      "src": "media/portraits/student-30.webp",
+      "width": 768,
+      "height": 1024,
+      "role": "第四行政组组长"
+    }
+  ],
+  "missing": [
+    {
+      "id": "student-03",
+      "name": "董奕轩",
+      "reason": "本次资料未含照片",
+      "role": "团支书"
+    },
+    {
+      "id": "student-08",
+      "name": "陆宜清",
+      "reason": "本次资料未含照片"
+    }
+  ]
+}

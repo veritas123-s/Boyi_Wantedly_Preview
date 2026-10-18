@@ -1,4 +1,4 @@
-import * as THREE from './vendor/three/three.module.js';
+import * as THREE from './vendor/three/three.module.js?v=c8211c69345d';
 
 const FRAME_MS = 1000 / 60;
 const DURATIONS = Object.freeze({ wave: 1.6, jump: 1.25, nod: 1.4, think: 2.8, listen: 2.2, celebrate: 1.8, tablet: 3.4 });
@@ -352,6 +352,13 @@ export function createBoyiModel(canvas, { onError = () => {}, onFrame = () => {}
     transition = null; rest.clear(); animated.length = 0;
   }
 
+  function setViewRotation(yaw, pitch = 0) {
+    if (!ready || disposed || fault) return false;
+    root.rotation.set(clamp(pitch, -0.5, 0.5), Number.isFinite(yaw) ? yaw : 0, 0);
+    if (!active || paused) render();
+    return true;
+  }
+
   function getStats() {
     return {
       renderFrames, targetFps: 60, running: active && !paused && !fault && !disposed,
@@ -359,13 +366,14 @@ export function createBoyiModel(canvas, { onError = () => {}, onFrame = () => {}
       rootX: root?.position.x ?? 0, rootY: root?.position.y ?? 0, rootZ: root?.position.z ?? 0,
       rootScale: root ? root.scale.toArray() : [1, 1, 1],
       cameraPosition: camera ? camera.position.toArray() : null,
+      viewYaw: root?.rotation.y ?? 0, viewPitch: root?.rotation.x ?? 0,
       geometryVertices, uniqueGeometryVertices, meshCount,
       drawCalls: renderer?.info.render.calls ?? 0, triangles: renderer?.info.render.triangles ?? 0,
       pixelRatio, width, height, lastFrameTime, lastError
     };
   }
 
-  const api = { play, setPaused, dispose, getStats };
+  const api = { play, setPaused, dispose, getStats, setViewRotation };
   try {
     if (!canvas || typeof canvas.getContext !== 'function' || typeof canvas.getBoundingClientRect !== 'function') {
       throw new Error('createBoyiModel 需要可测量尺寸的 HTML canvas。');
