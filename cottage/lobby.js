@@ -1,4 +1,4 @@
-import { createBoyiFairy } from './scene.js?v=5f08594c7f73';
+import { createBoyiFairy } from './scene.js?v=a446a1c46f7e';
 
 /** Public, fully modelled reception hall. Membership decisions belong to app. */
 export function createLobbyScene(THREE, scene, {textures={},quality='balanced',reduced=false}={}) {
