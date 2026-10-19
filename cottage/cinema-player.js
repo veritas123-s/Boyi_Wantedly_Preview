@@ -10,7 +10,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo}){
   const desired=Math.max(0,Math.min(Number.isFinite(video.duration)?Math.max(0,video.duration-.04):604800,targetTime()));
   if((force||Math.abs(video.currentTime-desired)>.65)&&!video.seeking)try{video.currentTime=desired;}catch{}
   video.playbackRate=1;
-  if(movie.playing&&video.paused)play();else if(!movie.playing&&!video.paused)video.pause();
+  if(movie.playing&&video.paused&&!blocked)play();else if(!movie.playing&&!video.paused)video.pause();
   seek.max=Number.isFinite(video.duration)?String(video.duration):'604800';if(document.activeElement!==seek)seek.value=String(video.currentTime);
   const seconds=Math.floor(video.currentTime||0);$('#movie-time').textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
  }

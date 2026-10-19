@@ -1,7 +1,7 @@
-import {createSocialClient} from './social.js?v=b050104296b6';
+import {createSocialClient} from './social.js?v=1037361c56dc';
 import {createAvatar} from './avatars.js?v=5bcca7ce6bd3';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=f0f60023dde6';
-import {createCinemaPlayer} from './cinema-player.js?v=ae547785df8a';
+import {createCinemaPlayer} from './cinema-player.js?v=13858fc51576';
 const $ = selector => document.querySelector(selector);
 const view=$('#room-view'),enter=$('#enter-room'),arrival=$('#arrival'),hud=$('#room-hud'),dialog=$('#room-dialog');
 const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches,coarse=matchMedia('(pointer:coarse)').matches;
