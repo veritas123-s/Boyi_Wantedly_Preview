@@ -190,8 +190,8 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   const mortar=standard({color:0x4b4941,roughness:1});
   B(architecture,mortar,0,2.6,-7.19,12.4,5.3,.1);B(architecture,mortar,0,2.6,7.19,12.4,5.3,.1);
   B(architecture,mortar,-6.19,2.6,0,.1,5.3,14.4);
-  B(architecture,mortar,6.19,.49,0,.1,.98,14.4);B(architecture,mortar,6.19,4.99,0,.1,.55,14.4);
-  B(architecture,mortar,6.19,2.9,-5.71,.1,4.0,2.89);B(architecture,mortar,6.19,2.9,2.98,.1,4.0,8.16);
+  B(architecture,mortar,6.19,.49,-2.67,.1,.98,8.94);B(architecture,mortar,6.19,.49,5.25,.1,.98,3.9);B(architecture,mortar,6.19,4.99,0,.1,.55,14.4);
+  B(architecture,mortar,6.19,2.9,-5.71,.1,4.0,2.89);B(architecture,mortar,6.19,2.9,.35,.1,4.0,2.96);B(architecture,mortar,6.19,2.9,5.25,.1,4.0,3.9);B(architecture,mortar,6.19,4.10,2.6,.1,2.24,1.54);
   B(architecture,darkWood,0,-.14,0,12.45,.22,14.45);
   for(let col=0;col<24;col++) {
     const x=-5.75+col*.5,offset=(col%2)*.86;
@@ -221,10 +221,10 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
       if(back<=front)continue;
       const tone=range(.8,1.12),tint=new THREE.Color().setRGB(tone,tone*.975,tone*.94);
       B(architecture,stone,-6.02,y,(front+back)/2,.28,.307,back-front,[0,0,0],tint);
-      if(!insideWindow(z,y))B(architecture,stone,6.02,y,(front+back)/2,.28,.307,back-front,[0,0,0],tint);
+      if(!insideWindow(z,y)&&!(Math.abs(z-2.6)<.92&&y<2.95))B(architecture,stone,6.02,y,(front+back)/2,.28,.307,back-front,[0,0,0],tint);
     }
   }
-  for(const x of [-5.82,5.82])for(const y of [.12,5.09])B(architecture,walnut,x,y,0,.2,.22,14.05);
+  for(const x of [-5.82,5.82])for(const y of [.12,5.09]){if(x>0&&y<1){B(architecture,walnut,x,y,-2.63,.2,.22,8.8);B(architecture,walnut,x,y,5.24,.2,.22,3.57);}else B(architecture,walnut,x,y,0,.2,.22,14.05);}
   for(const z of [-6.87,6.87])B(architecture,walnut,0,5.12,z,12.15,.23,.26);
   for(const x of [-5.78,5.78])for(const z of [-6.7,-.2,6.7]) {
     B(architecture,walnut,x,2.6,z,.31,5.2,.31);
@@ -534,12 +534,12 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   collider(3.9,4.95,1.47,1.42);
 
   // Freestanding armillary sphere and telescope add scholarly, nautical cues.
-  const armillary=group('Brass armillary',root,[4.56,0,2.52]);
+  const armillary=group('Brass armillary',root,[-3.9,0,3.25]);
   for(const x of [-.23,.23])for(const z of [-.23,.23])beam(armillary,[x*1.65,.02,z*1.65],[x,.9,z],.055,walnut);
   C(armillary,walnut,0,.91,0,.43,.08);C(armillary,brass,0,1.13,0,.06,.38);
   for(const [rotation,r] of [[[0,0,.38],.49],[[Math.PI/2,0,0],.48],[[0,Math.PI/2,0],.48],[[.6,.8,.1],.44]])batch(armillary,ring,brass,[0,1.73,0],[r,r,r],rotation);
   S(armillary,oldGold,0,1.73,0,.18);beam(armillary,[-.19,1.15,0],[.19,2.3,0],.018,brass);
-  collider(4.56,2.52,.86,.86);
+  collider(-3.9,3.25,.86,.86);
   const telescope=group('Telescope',root,[4.63,0,-4.98],[0,.32,0]);
   for(let i=0;i<3;i++){const a=i*Math.PI*2/3;beam(telescope,[Math.cos(a)*.48,.03,Math.sin(a)*.48],[0,1.28,0],.035,brass);}
   const telescopeTube=group('Optical tube',telescope,[0,1.5,0],[Math.PI/2-.28,0,.2]);
@@ -562,22 +562,38 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
     mesh(charts,G(new THREE.PlaneGeometry(w,h)),standard({map:chart,roughness:.92}),[x,y,.06]);
   }
 
-  // Back door: curved oak planks, forged hinges and a real, raycastable handle.
-  const door=group('Door to Boyi',root,[0,0,6.96],[0,Math.PI,0]);
-  const doorPanel=G(new THREE.ExtrudeGeometry(archShape(2.02,.06,2.41),{depth:.12,steps:1,bevelEnabled:true,bevelSegments:2,bevelThickness:.016,bevelSize:.015,curveSegments:24}));
-  mesh(door,doorPanel,walnut,[0,0,-.02]);
-  for(let i=-3;i<=3;i++) {
-    const x=i*.254,top=2.41+Math.sqrt(Math.max(0,1.01**2-x*x));
-    B(door,darkWood,x,top/2,.109,.011,top-.06,.016);
+  // Matching second-floor lift: the return trip uses this same real cabin.
+  const lift=group('Second-floor brass lift',root,[0,0,5.95],[0,Math.PI,0]);
+  const liftLeaves=[],liftPanel=standard({color:0x806744,map:woodColor,roughness:.42,metalness:.2});
+  B(lift,darkWood,0,.02,-.49,2.45,.06,1.1);B(lift,darkWood,0,1.6,-1.02,2.45,3.2,.13);
+  for(const side of [-1,1]){
+    B(lift,walnut,side*1.17,1.6,-.48,.13,3.2,1.12);B(lift,brass,side*1.14,1.51,.06,.16,3.02,.21);B(lift,woodEdge,side*1.30,1.57,.08,.11,3.15,.25);
+    const leaf=group('Sliding brass lift leaf',lift,[side*.535,0,0]);liftLeaves.push({leaf,side});
+    mesh(leaf,rounded(1.055,2.9,.075,.025),liftPanel,[0,1.47,0]).castShadow=false;
+    for(const x of [-.46,.46])B(leaf,brass,x,1.47,.048,.018,2.75,.018);
+    for(const y of [.19,.72,2.17,2.74])B(leaf,brass,0,y,.047,.92,.022,.017);
+    B(leaf,darkWood,0,1.47,.045,.79,1.34,.012);for(let i=-3;i<=3;i++)B(leaf,brass,i*.105,1.47,.059,.012,1.24,.014);
+    B(lift,brass,side*1.11,.9,-.55,.035,.04,.75);for(const z of [-.24,-.76])S(lift,brass,side*1.11,.9,z,.045);
   }
-  for(const x of [-1.13,1.13])B(door,dressedStone,x,1.26,0,.22,2.53,.42);
-  for(let i=0;i<17;i++){const a=i*Math.PI/16;B(door,dressedStone,Math.cos(a)*1.13,2.41+Math.sin(a)*1.13,0,.23,.26,.43,[0,0,a-Math.PI/2]);}
-  for(const y of [.45,1.92]) {B(door,iron,-.46,y,.137,1.01,.09,.036);for(const x of [-.86,-.53,-.18])S(door,iron,x,y,.17,.022,.022,.013);}
-  batch(door,ring,brass,[.64,1.25,.19],[.1,.1,.1]);S(door,brass,.64,1.36,.17,.046,.06,.021);
-  B(door,brass,0,2.45,.15,.62,.25,.025);
-  const plaqueTexture=canvasTexture(512,(c,s)=>{c.fillStyle='#68422b';c.fillRect(0,0,s,s);c.strokeStyle='#b49b68';c.lineWidth=8;c.strokeRect(15,15,s-30,s-30);c.fillStyle='#dfcea9';c.textAlign='center';c.font='52px Georgia, serif';c.fillText('BOYI',s/2,235);c.font='29px Georgia, serif';c.fillText('THE STUDY',s/2,308);});
-  mesh(door,G(new THREE.PlaneGeometry(.56,.19)),standard({map:plaqueTexture,roughness:.6}),[0,2.45,.168]);
-  interact('door','回到会客大厅',door,[0,1.6,6.66]);
+  B(lift,brass,0,2.99,.06,2.4,.13,.24);B(lift,walnut,0,3.17,-.45,2.58,.2,1.3);B(lift,brass,0,.058,-.1,2.4,.025,.3);
+  for(let i=-9;i<=9;i++)B(lift,iron,i*.118,.073,-.1,.018,.005,.27);
+  const liftDisplayCanvas=document.createElement('canvas');liftDisplayCanvas.width=512;liftDisplayCanvas.height=160;
+  const liftDisplayTexture=new THREE.CanvasTexture(liftDisplayCanvas);liftDisplayTexture.colorSpace=THREE.SRGBColorSpace;ownedTextures.add(liftDisplayTexture);
+  mesh(lift,G(new THREE.PlaneGeometry(1.30,.405)),basic({map:liftDisplayTexture,toneMapped:false}),[0,3.50,.095]);
+  const callButton=group('Lift call button',lift,[-1.52,1.27,.07]);mesh(callButton,rounded(.28,.59,.045,.035),brass);C(callButton,iron,0,0,.044,.076,.018,[Math.PI/2,0,0]);mesh(callButton,G(new THREE.CircleGeometry(.047,24)),basic({color:0xffdda0}),[0,0,.061]);
+  const liftDoorBlockers=liftLeaves.map(({side})=>{const c={minX:side*.535-.5275,maxX:side*.535+.5275,minZ:5.90,maxZ:6.00};colliders.push(c);return c;});
+  const liftNeedle=group('Mechanical floor indicator needle',lift,[0,3.405,.15]);mesh(liftNeedle,box,brass,[0,.115,0],[.018,.23,.022]);S(liftNeedle,brass,0,0,.006,.042,.042,.014);
+  for(const side of [-1,1])for(const y of [.22,.63,1.04,1.85,2.29,2.75])S(lift,brass,side*1.14,y,.183,.022,.022,.009);
+  for(const {leaf}of liftLeaves)for(const y of [1.17,1.75])for(const sign of [-1,1])for(const x of [-.13,.13])B(leaf,iron,x,y,.078,.015,.78,.016,[0,0,sign*.66]);
+  const liftBulb=mesh(lift,sphere,basic({color:0xffd298,toneMapped:false}),[0,2.9,-.45],[.065,.11,.065]);liftBulb.castShadow=false;C(lift,iron,0,3.035,-.45,.052,.1);B(lift,brass,0,3.10,-.45,.24,.035,.24);
+  const liftState={floor:2,moving:false,doors:0};
+  function paintLiftDisplay(){const c=liftDisplayCanvas.getContext('2d');c.fillStyle='#c5b28a';c.fillRect(0,0,512,160);c.strokeStyle='#51402b';c.lineWidth=6;c.strokeRect(5,5,502,150);c.lineWidth=1.5;c.strokeRect(15,15,482,130);c.strokeStyle='#6c5633';c.beginPath();c.ellipse(256,142,137,115,Math.PI,0,Math.PI);c.stroke();for(let i=0;i<11;i++){const a=Math.PI+(i/10)*Math.PI;c.beginPath();c.moveTo(256+Math.cos(a)*126,142+Math.sin(a)*105);c.lineTo(256+Math.cos(a)*(i%5?120:112),142+Math.sin(a)*(i%5?99:92));c.stroke();}c.fillStyle='#3e3024';c.textAlign='center';c.textBaseline='middle';c.font='600 34px "KaiTi","Microsoft YaHei",serif';c.fillText('一',135,60);c.fillText('二',377,60);c.font='18px "KaiTi","Microsoft YaHei",serif';c.fillText('楼  层',256,41);c.font='17px Georgia,serif';c.fillText('BOYI  ·  LIFT',256,134);liftNeedle.rotation.z=liftState.moving?0:liftState.floor===1?.72:-.72;liftDisplayTexture.needsUpdate=true;}
+  function setElevatorState(next={}){const before=`${liftState.floor}/${liftState.moving}`;if(Number.isFinite(next.doors))liftState.doors=Math.max(0,Math.min(1,next.doors));if(next.floor===1||next.floor===2)liftState.floor=next.floor;if(typeof next.moving==='boolean')liftState.moving=next.moving;for(let i=0;i<liftLeaves.length;i++){const {leaf,side}=liftLeaves[i];leaf.position.x=side*(.535+liftState.doors*1.025);liftDoorBlockers[i].minX=leaf.position.x-.5275;liftDoorBlockers[i].maxX=leaf.position.x+.5275;}if(before!==`${liftState.floor}/${liftState.moving}`)paintLiftDisplay();}
+  paintLiftDisplay();
+  interact('elevator-return','乘电梯回会客大厅',callButton,[1.52,1.27,5.88]);for(const {leaf}of liftLeaves)interact('elevator-return','乘电梯回会客大厅',leaf,[0,1.47,5.95]);
+  collider(-1.18,6.45,.2,1.04);collider(1.18,6.45,.2,1.04);
+  const elevator={entry:{x:0,z:4.75,yaw:Math.PI},cabin:{x:0,z:6.4,yaw:0}};
+  const liftLight=new THREE.PointLight(0xffd5a1,9,5.5,2);liftLight.position.set(0,3.12,5.42);root.add(liftLight);
 
   // Chandelier: warm wax, blackened brass and a single shadow-casting light.
   const chandelier=group('A circle of candlelight',root,[0,4.35,1.25]);
@@ -612,7 +628,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   for(const entry of batches.values()) {
     if(!entry.items.length)continue;
     const item=new THREE.InstancedMesh(entry.geometry,entry.material,entry.items.length);
-    item.name=`${entry.owner.name} · ${entry.material.type}`;item.castShadow=true;item.receiveShadow=true;
+    item.name=`${entry.owner.name} · ${entry.material.type}`;item.castShadow=!entry.owner.name.includes('Sliding brass lift leaf');item.receiveShadow=true;
     entry.items.forEach((entryItem,index)=>{item.setMatrixAt(index,entryItem.matrix);if(entryItem.tint)item.setColorAt(index,entryItem.tint);});
     item.instanceMatrix.needsUpdate=true;if(item.instanceColor)item.instanceColor.needsUpdate=true;
     item.computeBoundingSphere();entry.owner.add(item);instances+=entry.items.length;instanceDraws++;
@@ -629,7 +645,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   Object.defineProperties(stats,{spriteFollowing:{enumerable:true,get:()=>fairy.stats.spriteFollowing},spriteGestureCount:{enumerable:true,get:()=>fairy.stats.spriteGestureCount}});
   let elapsed=0,fireEnabled=true,nightEnabled=true;
   return {
-    root,colliders,interactables,spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
+    root,colliders,interactables,elevator,setElevatorState,spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
     setViewerPose(pose={}){fairy.setViewerPose(pose);},
     setSpriteState(state='idle'){fairy.setSpriteState(state);},
     setFireEnabled(enabled=true) {

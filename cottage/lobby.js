@@ -1,4 +1,4 @@
-import { createBoyiFairy } from './scene.js?v=a446a1c46f7e';
+import { createBoyiFairy } from './scene.js?v=32a3d67967c6';
 
 /** Public, fully modelled reception hall. Membership decisions belong to app. */
 export function createLobbyScene(THREE, scene, {textures={},quality='balanced',reduced=false}={}) {
@@ -88,19 +88,45 @@ export function createLobbyScene(THREE, scene, {textures={},quality='balanced',r
   const runnerTexture=canvasTexture(1024,(c,s)=>{c.fillStyle='#452c32';c.fillRect(0,0,s,s);for(let i=0;i<15000;i++){c.fillStyle=i%2?'rgba(168,139,92,.045)':'rgba(0,0,0,.07)';c.fillRect(range(0,s),range(0,s),range(1,3),range(1,5));}for(const x of [28,39,71,81,s-28,s-39,s-71,s-81]){c.strokeStyle=x%2?'#8c7551':'#6e593f';c.lineWidth=x===71?8:2;c.beginPath();c.moveTo(x,0);c.lineTo(x,s);c.stroke();}for(let i=0;i<14;i++){c.save();c.translate(s/2,40+i*75);c.rotate(Math.PI/4);c.strokeStyle='#7c6446';c.lineWidth=2;c.strokeRect(-20,-20,40,40);c.restore();}});
   const runner=standard({map:runnerTexture,roughness:1});mesh(root,G(new THREE.PlaneGeometry(2.55,11.35)),runner,[.08,.029,.27],[1,1,1],[-Math.PI/2,0,0]);
 
-  // A genuine door in a thick arch is the only route into the member study.
-  const door=group('Door to the Boyi study',root,[0,0,-6.9]);
-  const doorGeometry=G(new THREE.ExtrudeGeometry(arch(2.3,.04,2.58),{depth:.13,steps:1,curveSegments:24,bevelEnabled:true,bevelSize:.018,bevelThickness:.016,bevelSegments:2}));
-  mesh(door,doorGeometry,wood,[0,0,-.08]);
-  for(let i=-4;i<=4;i++){const x=i*.25,h=2.58+Math.sqrt(Math.max(0,1.15**2-x*x));B(door,darkWood,x,h/2,.068,.012,h-.06,.016);}
-  for(const x of [-1.29,1.29]){B(door,stoneTrim,x,1.28,0,.25,2.57,.58);for(const y of [.2,2.49])B(door,stoneTrim,x,y,.04,.41,.18,.76);}
-  for(let i=0;i<19;i++){const a=i*Math.PI/18;B(door,stoneTrim,Math.cos(a)*1.29,2.58+Math.sin(a)*1.29,0,.245,.27,.58,[0,0,a-Math.PI/2]);}
-  for(const y of [.56,2.05]){B(door,iron,-.49,y,.107,1.12,.075,.032);for(const x of [-.96,-.55,-.16])S(door,brass,x,y,.13,.018,.018,.008);}
-  batch(door,ring,brass,[.72,1.38,.14],[.105,.105,.105]);S(door,brass,.72,1.49,.14,.036,.045,.015);
-  const entrancePlate=group('Boyi study door plate',door,[0,2.43,.14]);mesh(entrancePlate,rounded(.84,.26,.03,.025),brass);
-  const doorTitle=canvasTexture(512,(c,s)=>{c.fillStyle='#a68e58';c.fillRect(0,0,s,s);c.strokeStyle='#51432d';c.lineWidth=9;c.strokeRect(12,12,s-24,s-24);c.fillStyle='#352b21';c.textAlign='center';c.scale(1,3.75);c.font='70px "KaiTi", "Microsoft YaHei", serif';c.fillText('博医小屋',s/2,92);});
-  mesh(entrancePlate,G(new THREE.PlaneGeometry(.77,.205)),standard({map:doorTitle,roughness:.6}),[0,0,.032]);
-  interact('door','进入博医小屋',door,[0,1.7,-6.55]);
+  // A modelled brass lift is the only member route upstairs. The cabin and
+  // split leaves remain real geometry throughout the local camera transition.
+  const lift=group('First-floor brass lift',root,[0,0,-5.95]);
+  const liftLeaves=[],liftPanel=standard({color:0x806744,map:woodMap,roughness:.42,metalness:.2});
+  B(lift,darkWood,0,.02,-.49,2.45,.06,1.1);B(lift,darkWood,0,1.6,-1.02,2.45,3.2,.13);
+  for(const side of [-1,1]){
+    B(lift,wood,side*1.17,1.6,-.48,.13,3.2,1.12);
+    B(lift,brass,side*1.14,1.51,.06,.16,3.02,.21);
+    B(lift,trim,side*1.30,1.57,.08,.11,3.15,.25);
+    const leaf=group('Sliding brass lift leaf',lift,[side*.535,0,0]);liftLeaves.push({leaf,side});
+    mesh(leaf,rounded(1.055,2.9,.075,.025),liftPanel,[0,1.47,0]).castShadow=false;
+    for(const x of [-.46,.46])B(leaf,brass,x,1.47,.048,.018,2.75,.018);
+    for(const y of [.19,.72,2.17,2.74])B(leaf,brass,0,y,.047,.92,.022,.017);
+    B(leaf,darkWood,0,1.47,.045,.79,1.34,.012);
+    for(let i=-3;i<=3;i++)B(leaf,brass,i*.105,1.47,.059,.012,1.24,.014);
+    B(lift,brass,side*1.11,.9,-.55,.035,.04,.75);
+    for(const z of [-.24,-.76])S(lift,brass,side*1.11,.9,z,.045);
+  }
+  B(lift,brass,0,2.99,.06,2.4,.13,.24);B(lift,wood,0,3.17,-.45,2.58,.2,1.3);
+  B(lift,brass,0,.058,-.1,2.4,.025,.3);for(let i=-9;i<=9;i++)B(lift,iron,i*.118,.073,-.1,.018,.005,.27);
+  const liftDisplayCanvas=document.createElement('canvas');liftDisplayCanvas.width=512;liftDisplayCanvas.height=160;
+  const liftDisplayTexture=new THREE.CanvasTexture(liftDisplayCanvas);liftDisplayTexture.colorSpace=THREE.SRGBColorSpace;ownedTextures.add(liftDisplayTexture);
+  const liftDisplay=mesh(lift,G(new THREE.PlaneGeometry(1.30,.405)),basic({map:liftDisplayTexture,toneMapped:false}),[0,3.50,.095]);
+  const callButton=group('Lift call button',lift,[1.52,1.27,.07]);mesh(callButton,rounded(.28,.59,.045,.035),brass);C(callButton,iron,0,0,.044,.076,.018,[Math.PI/2,0,0]);
+  const buttonGlow=basic({color:0xffdda0});mesh(callButton,G(new THREE.CircleGeometry(.047,24)),buttonGlow,[0,0,.061]);
+  const liftDoorBlockers=liftLeaves.map(({side})=>{const c={minX:side*.535-.5275,maxX:side*.535+.5275,minZ:-6.00,maxZ:-5.90};colliders.push(c);return c;});
+  const liftNeedle=group('Mechanical floor indicator needle',lift,[0,3.405,.15]);mesh(liftNeedle,box,brass,[0,.115,0],[.018,.23,.022]);S(liftNeedle,brass,0,0,.006,.042,.042,.014);
+  for(const side of [-1,1])for(const y of [.22,.63,1.04,1.85,2.29,2.75])S(lift,brass,side*1.14,y,.183,.022,.022,.009);
+  for(const {leaf}of liftLeaves)for(const y of [1.17,1.75])for(const sign of [-1,1])for(const x of [-.13,.13])B(leaf,iron,x,y,.078,.015,.78,.016,[0,0,sign*.66]);
+  const liftBulb=mesh(lift,sphere,basic({color:0xffd298,toneMapped:false}),[0,2.9,-.45],[.065,.11,.065]);liftBulb.castShadow=false;C(lift,iron,0,3.035,-.45,.052,.1);B(lift,brass,0,3.10,-.45,.24,.035,.24);
+  const liftState={floor:1,moving:false,doors:0};
+  function paintLiftDisplay(){const c=liftDisplayCanvas.getContext('2d');c.fillStyle='#c5b28a';c.fillRect(0,0,512,160);c.strokeStyle='#51402b';c.lineWidth=6;c.strokeRect(5,5,502,150);c.lineWidth=1.5;c.strokeRect(15,15,482,130);c.strokeStyle='#6c5633';c.beginPath();c.ellipse(256,142,137,115,Math.PI,0,Math.PI);c.stroke();for(let i=0;i<11;i++){const a=Math.PI+(i/10)*Math.PI;c.beginPath();c.moveTo(256+Math.cos(a)*126,142+Math.sin(a)*105);c.lineTo(256+Math.cos(a)*(i%5?120:112),142+Math.sin(a)*(i%5?99:92));c.stroke();}c.fillStyle='#3e3024';c.textAlign='center';c.textBaseline='middle';c.font='600 34px "KaiTi","Microsoft YaHei",serif';c.fillText('一',135,60);c.fillText('二',377,60);c.font='18px "KaiTi","Microsoft YaHei",serif';c.fillText('楼  层',256,41);c.font='17px Georgia,serif';c.fillText('BOYI  ·  LIFT',256,134);liftNeedle.rotation.z=liftState.moving?0:liftState.floor===1?.72:-.72;liftDisplayTexture.needsUpdate=true;}
+  function setElevatorState(next={}){const before=`${liftState.floor}/${liftState.moving}`;if(Number.isFinite(next.doors))liftState.doors=Math.max(0,Math.min(1,next.doors));if(next.floor===1||next.floor===2)liftState.floor=next.floor;if(typeof next.moving==='boolean')liftState.moving=next.moving;for(let i=0;i<liftLeaves.length;i++){const {leaf,side}=liftLeaves[i];leaf.position.x=side*(.535+liftState.doors*1.025);liftDoorBlockers[i].minX=leaf.position.x-.5275;liftDoorBlockers[i].maxX=leaf.position.x+.5275;}if(before!==`${liftState.floor}/${liftState.moving}`)paintLiftDisplay();}
+  paintLiftDisplay();
+  interact('elevator','乘电梯到二楼',callButton,[1.52,1.27,-5.88]);
+  interact('elevator','乘电梯到二楼',liftLeaves[0].leaf,[0,1.47,-5.95]);
+  interact('elevator','乘电梯到二楼',liftLeaves[1].leaf,[0,1.47,-5.95]);
+  collider(-1.18,-6.45,.2,1.04);collider(1.18,-6.45,.2,1.04);
+  const elevator={entry:{x:0,z:-4.75,yaw:0},cabin:{x:0,z:-6.4,yaw:Math.PI}};
 
   // Actual supplied emblems: clearly visible at arrival, never reconstructed.
   let originalLogoCount=0;const logoMaterials=new Map();
@@ -227,11 +253,11 @@ export function createLobbyScene(THREE, scene, {textures={},quality='balanced',r
 
   const fairy=createBoyiFairy(THREE,root,{reduced,colliders});interactables.push(fairy.interactable);
   let instanceCount=0;
-  for(const b of batches.values()){const instanced=new THREE.InstancedMesh(b.g,b.m,b.entries.length);instanced.name=b.owner.name+' details';b.entries.forEach((entry,i)=>{instanced.setMatrixAt(i,entry.matrix);if(entry.tint)instanced.setColorAt(i,entry.tint);});instanced.instanceMatrix.needsUpdate=true;instanced.castShadow=b.owner!==exterior;instanced.receiveShadow=true;instanced.computeBoundingSphere();b.owner.add(instanced);instanceCount+=b.entries.length;}batches.clear();
+  for(const b of batches.values()){const instanced=new THREE.InstancedMesh(b.g,b.m,b.entries.length);instanced.name=b.owner.name+' details';b.entries.forEach((entry,i)=>{instanced.setMatrixAt(i,entry.matrix);if(entry.tint)instanced.setColorAt(i,entry.tint);});instanced.instanceMatrix.needsUpdate=true;instanced.castShadow=b.owner!==exterior&&!b.owner.name.includes('Sliding brass lift leaf');instanced.receiveShadow=true;instanced.computeBoundingSphere();b.owner.add(instanced);instanceCount+=b.entries.length;}batches.clear();
   let triangles=0,draws=0;root.traverse(o=>{if(o.isMesh){triangles+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);draws++;}});
-  const stats={geometryTriangles:Math.round(triangles),estimatedMainPassDrawCalls:draws+1,staticInstances:instanceCount,shadowLights:1,interactions:3,originalLogoCount,sceneKind:'public-lobby',rendererMeasured:false};
+  const stats={geometryTriangles:Math.round(triangles),estimatedMainPassDrawCalls:draws+1,staticInstances:instanceCount,shadowLights:1,interactions:interactables.length,originalLogoCount,sceneKind:'public-lobby',rendererMeasured:false};
   Object.defineProperties(stats,{spriteFollowing:{enumerable:true,get:()=>fairy.stats.spriteFollowing},spriteGestureCount:{enumerable:true,get:()=>fairy.stats.spriteGestureCount}});
-  return{root,colliders,interactables,spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
+  return{root,colliders,interactables,elevator,setElevatorState,spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
     setViewerPose:pose=>fairy.setViewerPose(pose),setSpriteState:state=>fairy.setSpriteState(state),
     update(seconds,dt=0){if(!disposed)fairy.update(seconds,dt);},
     setNightMode(enabled=true){skyMaterial.color.setHex(enabled?0x101b30:0x99bdca);mountainMaterial.color.setHex(enabled?0x263c4c:0x718e80);moonMaterial.color.setHex(enabled?0xd5e2ec:0xffecc5);stars.visible=Boolean(enabled);moonLight.color.setHex(enabled?0xb6d0eb:0xffe1b3);moonLight.intensity=enabled?1.8:2.45;hemisphere.intensity=enabled?1.23:1.58;},

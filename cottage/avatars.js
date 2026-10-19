@@ -1,4 +1,5 @@
 // Original lightweight 3D characters, with reference-inspired owner styling.
+import { createNaidan } from './naidan.js?v=6c17b37b7837';
 const contactShadowCache=new WeakMap();
 function acquireContactShadow(THREE){
  let entry=contactShadowCache.get(THREE);
@@ -11,9 +12,11 @@ export const avatarPresets=[
  {id:'scholar-sage',label:'青岚',coat:0x83a993,hair:0x353b32,style:'curl'},
  {id:'scholar-plum',label:'星禾',coat:0xc8a298,hair:0x77594b,style:'bob'},
  {id:'scholar-rose',label:'朝露',coat:0xd499a2,hair:0x4a3233,style:'bun'},
- {id:'scholar-slate',label:'云杉',coat:0x91a4a6,hair:0x404f5d,style:'glasses'}
+ {id:'scholar-slate',label:'云杉',coat:0x91a4a6,hair:0x404f5d,style:'glasses'},
+ {id:'naidan',label:'奶蛋',coat:0xe9b82d,hair:0x789841,style:'naidan'}
 ];
-export function createAvatar(THREE,{avatarId='visitor',variant=0,name='访客'}={}){
+export function createAvatar(THREE,{avatarId='visitor',variant=0,name='访客',quality='balanced'}={}){
+ if(avatarId==='naidan')return createNaidanAvatar(THREE,{name,quality});
  const owner=avatarId==='zhang-jiayu',preset=avatarPresets.find(p=>p.id===avatarId)||{coat:0x9aafac,hair:0x52483c,style:'short'};
  const root=new THREE.Group(),shape=new THREE.Group();root.add(shape);root.name='avatar';
  const geometries=[],materials=[],textures=[],bins=new Map(),customMeshes=[],temporary=new THREE.Object3D();
@@ -151,4 +154,15 @@ export function createAvatar(THREE,{avatarId='visitor',variant=0,name='访客'}=
   shadow.visible=!seated&&(pose.jumpHeight||0)<.08;
   labelMesh.getWorldPosition(labelWorldPosition);labelMesh.visible=labelWorldPosition.distanceTo(camera.position)>1.15;labelMesh.scale.setScalar(Math.max(.55,Math.min(1,labelWorldPosition.distanceTo(camera.position)/2.8)));labelMesh.quaternion.copy(camera.quaternion);labelMesh.quaternion.premultiply(root.quaternion.clone().invert());
  },getRigPose:()=>({leftLeg:rig.leftLeg.rotation.x,rightLeg:rig.rightLeg.rotation.x,leftKnee:rig.leftKnee.rotation.x,rightArm:rightArm.rotation.x,held:held.visible}),dispose(){if(disposed)return;disposed=true;root.removeFromParent();root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());contact.release();}};
+}
+
+function createNaidanAvatar(THREE,{name='奶蛋',quality='balanced'}={}){
+ const root=new THREE.Group();root.name='avatar';const model=createNaidan(THREE,root,{quality});model.root.scale.setScalar(1.65/2.225);
+ const canvas=document.createElement('canvas'),text=String(name).slice(0,18);canvas.height=96;let context=canvas.getContext('2d');context.font='500 30px Microsoft YaHei,sans-serif';canvas.width=Math.min(600,Math.max(128,Math.ceil(context.measureText(text).width)+44));context=canvas.getContext('2d');context.fillStyle='rgba(22,28,28,.48)';context.beginPath();context.roundRect(4,8,canvas.width-8,80,18);context.fill();context.font='500 30px Microsoft YaHei,sans-serif';context.textAlign='center';context.textBaseline='middle';context.fillStyle='#eee2c9';context.fillText(text,canvas.width/2,48);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide});const geometry=new THREE.PlaneGeometry(Math.min(.96,Math.max(.38,canvas.width/470)),.17);const label=new THREE.Mesh(geometry,material);label.position.y=1.87;root.add(label);const world=new THREE.Vector3(),inverse=new THREE.Quaternion();let disposed=false;
+ const contact=acquireContactShadow(THREE),shadowGeometry=new THREE.PlaneGeometry(1.65,1.30),shadowMaterial=new THREE.MeshBasicMaterial({map:contact.texture,transparent:true,depthWrite:false,opacity:.72,polygonOffset:true,polygonOffsetFactor:-1});const shadow=new THREE.Mesh(shadowGeometry,shadowMaterial);shadow.rotation.x=-Math.PI/2;shadow.position.y=.037;shadow.renderOrder=1;root.add(shadow);
+ return {root,ready:model.ready,setPose(x,z,yaw,dt=.016){const f=1-Math.exp(-dt*12);root.position.x+=(x-root.position.x)*f;root.position.z+=(z-root.position.z)*f;const diff=Math.atan2(Math.sin(yaw-root.rotation.y),Math.cos(yaw-root.rotation.y));root.rotation.y+=diff*f;},
+  update(t,camera,moving=false,pose={}){if(disposed)return;/* Static body: the existing player/peer controller applies walking and jump translation. */shadow.visible=!pose.seatId&&(pose.jumpHeight||0)<.08;if(camera){label.getWorldPosition(world);const d=world.distanceTo(camera.position);label.visible=d>1.15;label.scale.setScalar(Math.max(.55,Math.min(1,d/2.8)));inverse.copy(root.quaternion).invert();label.quaternion.copy(camera.quaternion).premultiply(inverse);}},
+  getRigPose:()=>({leftLeg:0,rightLeg:0,leftKnee:0,rightArm:0,held:false}),getModelStats:model.stats,
+  dispose(){if(disposed)return;disposed=true;model.dispose();geometry.dispose();material.dispose();texture.dispose();shadowGeometry.dispose();shadowMaterial.dispose();contact.release();root.removeFromParent();}};
 }
