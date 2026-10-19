@@ -2,7 +2,7 @@ import {createKeyBindings} from './controls.js?v=82c90828dff7';
 import {createSocialClient} from './social.js?v=246b7fbbd2e3';
 import {createAvatar} from './avatars.js?v=4fe52b133d50';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=d304de7aeb16';
-import {createCinemaPlayer} from './cinema-player.js?v=9cd13fd72405';
+import {createCinemaPlayer} from './cinema-player.js?v=d64851f958e1';
 const $ = selector => document.querySelector(selector);
 const view=$('#room-view'),enter=$('#enter-room'),arrival=$('#arrival'),hud=$('#room-hud'),dialog=$('#room-dialog');
 const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches,coarse=matchMedia('(pointer:coarse)').matches;
