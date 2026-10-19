@@ -142,7 +142,6 @@ function showDashboard(data){
  const changedUser=!!me&&me.user.id!==data.user.id,registrationUsername=lastUsername;
  if(changedUser){clearAccountState();if(data.recoveryCode)lastUsername=registrationUsername;}
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
- if(!editorLink.hidden&&new URLSearchParams(location.search).get('next')==='editor'){document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:true}}));location.replace(editorLink.href);return;}
  $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
  if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
  buildFields(data.profile,data.user);
