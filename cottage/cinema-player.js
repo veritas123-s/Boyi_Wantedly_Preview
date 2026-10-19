@@ -4,7 +4,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo}){
  video.playsInline=true;video.preload='metadata';video.crossOrigin='anonymous';
  function targetTime(){return movie?movie.time+(movie.playing?(performance.now()-receivedAt)/1000:0):0;}
  function controls(){const host=movie?.hostId===getSelf()?.participantId;$('#movie-host').textContent=host?'你是当前房主，可选片与控制播放':'由当前房主选片与控制播放';for(const id of ['movie-load','movie-play','movie-pause','movie-stop','movie-seek'])$('#'+id).disabled=!host;$('#movie-play').textContent='播放';$('#movie-unlock').hidden=!blocked;}
- async function play(){try{await video.play();blocked=false;controls();}catch(error){if(error.name==='NotAllowedError'){blocked=true;status.textContent='点击“开启放映声音”，与大家同步观看';controls();}else if(error.name!=='AbortError')status.textContent='视频暂时无法播放，请检查直链和视频格式';}}
+ async function play(){try{await video.play();blocked=false;status.textContent=flat?'正在同步放映 · 网页银幕':'正在同步放映';controls();}catch(error){if(error.name==='NotAllowedError'){blocked=true;status.textContent='点击“开启放映声音”，与大家同步观看';controls();}else if(error.name!=='AbortError')status.textContent='视频暂时无法播放，请检查直链和视频格式';}}
  function sync(force=false){
   if(!movie||!active||!source||!video.readyState)return;
   const desired=Math.max(0,Math.min(Number.isFinite(video.duration)?Math.max(0,video.duration-.04):604800,targetTime()));
