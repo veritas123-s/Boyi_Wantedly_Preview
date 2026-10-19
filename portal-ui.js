@@ -40,7 +40,7 @@ function setup(){
  const auth=document.getElementById('member-auth'),dashboard=document.getElementById('member-dashboard');if(!auth||!dashboard)return;
  const heading=[...root.querySelectorAll('h1')].find(element=>!auth.contains(element)&&!dashboard.contains(element));if(heading)heading.classList.add('portal-account-heading');
  const authLayout=node('div',undefined,'portal-auth-layout'),brand=node('aside',undefined,'portal-auth-brand'),card=node('div',undefined,'portal-auth-card');
- brand.append(node('p','博医云','portal-auth-eyebrow'),node('h2','你的博医主页'),node('p','更新个人资料、作品和实践记录。已有主页可以申请合并。'));
+ brand.append(node('p','博医云','portal-auth-eyebrow'),node('h2','你的博医主页'),node('p','更新肖像、昵称和简单介绍。已有主页可以申请合并。'));
  if(site){const image=node('img');image.src=new URL('media/liuan-selection/053-full.webp',site).href;image.alt='六安实践途中';image.loading='lazy';const fallback=node('p','照片暂时无法加载。','member-help');fallback.hidden=true;image.addEventListener('error',()=>{image.hidden=true;fallback.hidden=false;});brand.append(image,fallback);}
  auth.before(authLayout);authLayout.append(brand,card);card.append(auth);
  const dashboardLayout=node('div',undefined,'portal-dashboard-layout'),nav=node('nav',undefined,'portal-editor-nav');nav.setAttribute('aria-label','个人主页维护导航');dashboard.before(dashboardLayout);dashboardLayout.append(nav,dashboard);
@@ -55,7 +55,7 @@ function setup(){
   for(const section of dashboard.querySelectorAll('[data-section]'))if(visible(section,dashboard))ensureId(section,'portal-editor-section');
   const basic=document.getElementById('member-basic-fields');
   if(basic&&visible(basic,dashboard))add(basic,'基本资料');
-  const more=document.getElementById('member-more-fields');if(more&&visible(more,dashboard))add(more,'更多资料与公开设置');
+  const more=document.getElementById('member-more-fields');if(more&&visible(more,dashboard))add(more,'介绍与联系方式');
   const sectionLabels={appointments:'职务与任职',works:'作品与成果索引',experience:'实践与社会工作',projects:'项目经历',academic:'学术或其他成果',honors:'荣誉奖项',education:'教育经历',updates:'近期活动更新',essays:'阅读随笔'};
   const profileForm=document.getElementById('member-profile-form');
   for(const title of dashboard.querySelectorAll('h2')){
