@@ -1,4 +1,4 @@
-import {createSocialClient} from './social.js?v=3810384703f8';
+import {createSocialClient} from './social.js?v=8cb7524b5e88';
 import {createAvatar} from './avatars.js?v=5bcca7ce6bd3';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=f0f60023dde6';
 import {createCinemaPlayer} from './cinema-player.js?v=ae547785df8a';
