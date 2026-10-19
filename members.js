@@ -15,7 +15,7 @@ const profilePrefixes=new WeakMap();
 function clearAccountState(){
  securityEpoch++;
  for(const id of ['member-recovery','member-private-list','member-private-view','member-manage-people','member-manage-claims','member-preview','member-candidates','member-onboarding-actions','member-basic-fields','member-more-fields','portal-security']){const node=document.getElementById(id);if(node)node.replaceChildren();}
- for(const id of ['member-recovery','member-private-view','member-preview','portal-security','member-site-editor','member-management','member-private-management']){const node=document.getElementById(id);if(node)node.hidden=true;}
+ for(const id of ['member-recovery','member-private-view','member-preview','portal-security','member-management','member-private-management']){const node=document.getElementById(id);if(node)node.hidden=true;}
  const root=document.getElementById('member-account-content');
  if(root){for(const form of root.querySelectorAll('form'))form.reset();for(const input of root.querySelectorAll('input,textarea')){input.setCustomValidity('');if(!['checkbox','radio','button','submit','hidden'].includes(input.type))input.value='';}for(const section of root.querySelectorAll('[data-section]'))section.replaceChildren();}
  for(const id of ['member-hello','member-identity','member-published-state','member-save-state','member-onboarding-note']){const node=document.getElementById(id);if(node)node.textContent='';}
@@ -142,7 +142,6 @@ function showDashboard(data){
  const changedUser=!!me&&me.user.id!==data.user.id,registrationUsername=lastUsername;
  if(changedUser){clearAccountState();if(data.recoveryCode)lastUsername=registrationUsername;}
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
- let editorLink=$('#member-site-editor');if(!editorLink){editorLink=document.createElement('a');editorLink.id='member-site-editor';editorLink.className='button primary';editorLink.href=api+'/editor/';editorLink.textContent='编辑网站';$('#member-hello').insertAdjacentElement('afterend',editorLink);}editorLink.hidden=!(data.user.siteOwner&&data.user.identityStatus==='verified');
  if(!editorLink.hidden&&new URLSearchParams(location.search).get('next')==='editor'){document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:true}}));location.replace(editorLink.href);return;}
  $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
  if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
