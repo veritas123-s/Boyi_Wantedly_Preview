@@ -1,5 +1,5 @@
-import {createSocialClient} from './social.js?v=dcfccff64a79';
-import {createAvatar} from './avatars.js?v=ca1472df7be5';
+import {createSocialClient} from './social.js?v=3810384703f8';
+import {createAvatar} from './avatars.js?v=5bcca7ce6bd3';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=f0f60023dde6';
 import {createCinemaPlayer} from './cinema-player.js?v=ae547785df8a';
 const $ = selector => document.querySelector(selector);

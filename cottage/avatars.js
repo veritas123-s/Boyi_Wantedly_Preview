@@ -149,6 +149,6 @@ export function createAvatar(THREE,{avatarId='visitor',variant=0,name='访客'}=
   if(held.visible)rightArm.rotation.x=-.8;
   if(pose.action==='pickup'&&age>=0&&age<.65)rightArm.rotation.x=-Math.sin(age/.65*Math.PI)*.9;
   shadow.visible=!seated&&(pose.jumpHeight||0)<.08;
-  root.getWorldPosition(labelWorldPosition);labelMesh.scale.setScalar(Math.max(.55,Math.min(1,labelWorldPosition.distanceTo(camera.position)/2.8)));labelMesh.quaternion.copy(camera.quaternion);labelMesh.quaternion.premultiply(root.quaternion.clone().invert());
+  labelMesh.getWorldPosition(labelWorldPosition);labelMesh.visible=labelWorldPosition.distanceTo(camera.position)>1.15;labelMesh.scale.setScalar(Math.max(.55,Math.min(1,labelWorldPosition.distanceTo(camera.position)/2.8)));labelMesh.quaternion.copy(camera.quaternion);labelMesh.quaternion.premultiply(root.quaternion.clone().invert());
  },getRigPose:()=>({leftLeg:rig.leftLeg.rotation.x,rightLeg:rig.rightLeg.rotation.x,leftKnee:rig.leftKnee.rotation.x,rightArm:rightArm.rotation.x,held:held.visible}),dispose(){if(disposed)return;disposed=true;root.removeFromParent();root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());contact.release();}};
 }
