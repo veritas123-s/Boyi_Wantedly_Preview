@@ -9,3 +9,5 @@ function start(){creationNavigation();const menu=document.querySelector('.w-menu
  menu.addEventListener('click',event=>{if(desktop.matches&&event.isTrusted&&event.detail>0){event.preventDefault();event.stopImmediatePropagation();}},true);
  desktop.addEventListener('change',()=>{cancel();close();});window.addEventListener('pagehide',cancel);
 }if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();})();
+
+(()=>{const script=document.currentScript;if(script?.src)import(new URL('portal-guide.js?v=59a6fc5f3934',script.src)).catch(()=>{});})();

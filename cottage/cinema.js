@@ -155,7 +155,7 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   for(const y of [.18,.7,2.04,2.52])doorMesh(box,copper,[.675,y,.064],[1.18,.026,.025]);
   for(const y of [.3,1.32,2.35])doorMesh(cylinder,copper,[.015,y,.015],[.027,.18,.027]);
   doorMesh(sphere,copper,[1.14,1.15,.13],[.055,.055,.055]);
-  doorMesh(plane,basic({map:lettering(['回到博医小屋','按 E 开门或关门']),toneMapped:false}),[.675,1.89,.067],[1.02,.56,1]);
+  doorMesh(plane,basic({map:lettering(['回到博医小屋','靠近后互动开关门']),toneMapped:false}),[.675,1.89,.067],[1.02,.56,1]);
   doorMesh(box,basic({color:0x30261e}),[0,1.37,-.92],[1.45,2.74,.05],doorFrame);
   for(const x of [-.72,.72])doorMesh(box,walnut,[x,1.37,-.45],[.04,2.74,.88],doorFrame);
   doorMesh(box,walnut,[0,2.74,-.45],[1.45,.04,.9],doorFrame);

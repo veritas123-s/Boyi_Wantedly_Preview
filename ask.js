@@ -1,3 +1,4 @@
+import {requestGuide,safeGuideSource} from './portal-guide.js?v=59a6fc5f3934';
 'use strict';
 const askForm=document.querySelector('#ask-form'),question=document.querySelector('#question'),askStatus=document.querySelector('#ask-status'),answer=document.querySelector('#ask-answer');
 const askButton=askForm.querySelector('button[type=submit]'),waiting=document.querySelector('#ask-waiting');
@@ -40,10 +41,9 @@ askForm.addEventListener('submit',async event=>{
  const controller=new AbortController(),started=performance.now();pendingController=controller;cancelled=false;
  waitTime.textContent='0秒';waitHint.textContent='回答会连同资料来源一起呈现。';showProgress({stage:'received',message:'正在连接馆员'});waiting.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
  const ticker=setInterval(()=>{const seconds=Math.floor((performance.now()-started)/1000);waitTime.textContent=`${seconds}秒`;if(seconds>=20)waitHint.textContent='还在处理中，复杂问题需要多一点时间。你可以继续等待或取消。';},1000);
- const timer=setTimeout(()=>controller.abort(),85000);
+ const timer=setTimeout(()=>controller.abort(),40000);
  try{
-  const response=await fetch('https://122.51.44.155/boyi/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({question:text,website:new FormData(askForm).get('website'),stream_status:true})});
-  const data=await readAnswer(response,controller.signal);
+  const data=await requestGuide(text,{signal:controller.signal,onProgress:message=>showProgress({stage:'writing',message})});
   controller.signal.throwIfAborted();
   if(data.suppressed){answer.querySelector('.answer-text').textContent='';answer.querySelector('ul').replaceChildren();return;}
   answer.querySelector('.answer-text').textContent=data.answer;
@@ -51,7 +51,7 @@ askForm.addEventListener('submit',async event=>{
   for(const source of data.sources||[]){
    const item=document.createElement('li'),label=`[${source.number}] ${source.title}`;
    if(source.source_type==='report'||source.source_type==='editorial_note'){item.textContent=label;list.append(item);continue;}
-   try{const url=new URL(source.url);if(url.origin!=='https://veritas123-s.github.io'||!url.pathname.startsWith('/Boyi_SHSMU/'))continue;const link=document.createElement('a');link.href=url.href;link.textContent=label;item.append(link);list.append(item);}catch{continue;}
+   try{const url=safeGuideSource(source);if(!url)continue;const link=document.createElement('a');link.href=url.href;link.textContent=label;item.append(link);list.append(item);}catch{continue;}
   }
   mascotOutcome='nod';
   answer.querySelector('.answer-sources').hidden=!list.children.length;answer.hidden=false;answer.focus({preventScroll:true});answer.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
