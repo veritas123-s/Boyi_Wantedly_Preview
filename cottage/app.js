@@ -1,5 +1,5 @@
 import {createKeyBindings} from './controls.js?v=82c90828dff7';
-import {createSocialClient} from './social.js?v=1d7389835aeb';
+import {createSocialClient} from './social.js?v=6a47e3505f4f';
 import {createAvatar} from './avatars.js?v=4fe52b133d50';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=d304de7aeb16';
 import {createCinemaPlayer} from './cinema-player.js?v=d64851f958e1';
@@ -126,6 +126,6 @@ $('#open-roomchat').onclick=e=>openPanel('roomchat',e.currentTarget);$('#open-vo
 $('#cinema-controls').onclick=e=>openPanel('cinema',e.currentTarget);
 $('#visit-cinema').onclick=()=>{closePanel();notify(currentRoom==='cottage'?'找到放映室门，按 '+bindings.label('interact')+' 开门后走进去':'先从会客大厅乘电梯到二楼博医小屋');};$('#return-study').onclick=()=>{closePanel();notify('走到放映室出口，按 '+bindings.label('interact')+' 开门后返回博医小屋');};
 let resumeAvatarChoice=false;
-$('#nickname-form').onsubmit=async event=>{event.preventDefault();const button=$('#nickname-save');button.disabled=true;$('#nickname-status').textContent='';try{const ok=await social?.changeNickname($('#room-nickname').value);if(!ok){$('#nickname-status').textContent='请输入 1–18 字的昵称';return;}closePanel();if(resumeAvatarChoice){resumeAvatarChoice=false;$('#choose-avatar').click();}notify('昵称已更新');}catch{$('#nickname-status').textContent='昵称暂未保存，请重试';}finally{button.disabled=false;}};
+$('#nickname-form').onsubmit=async event=>{event.preventDefault();const button=$('#nickname-save');button.disabled=true;$('#nickname-status').textContent='';try{const ok=await social?.changeNickname($('#room-nickname').value);if(!ok){$('#nickname-status').textContent='昵称暂未保存，请检查输入或连接后重试';return;}closePanel();if(resumeAvatarChoice){resumeAvatarChoice=false;$('#choose-avatar').click();}notify('昵称已更新');}catch{$('#nickname-status').textContent='昵称暂未保存，请重试';}finally{button.disabled=false;}};
 $('#save-room-name').onclick=async()=>{const button=$('#save-room-name');button.disabled=true;try{const ok=await social?.changeNickname($('#visitor-name').value);notify(ok?'昵称已更新':'请输入 1–18 字的昵称');}catch{notify('昵称暂未保存，请重试');}finally{button.disabled=false;}};
 if(directEntry)enterScene();
