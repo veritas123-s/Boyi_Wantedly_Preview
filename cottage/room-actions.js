@@ -1,4 +1,5 @@
 import {ROOM_LAYOUT} from './room-layout.js?v=9528bdbc62f4';
+import {createCarrotProp} from './avatars.js?v=00612df937d1';
 export function attachRoomActions(THREE,world,room){
  const root=new THREE.Group();root.name='Interactive seats and handheld objects';world.root.add(root);
  const geometries=new Set(),materials=new Set(),textures=new Set(),items=new Map();
@@ -54,6 +55,7 @@ export function createFirstPersonHands(THREE,camera){
  function add(g,color,x,y,z){geometries.push(g);const m=new THREE.MeshStandardMaterial({color,roughness:.7});materials.push(m);const mesh=new THREE.Mesh(g,m);mesh.position.set(x,y,z);root.add(mesh);return mesh;}
  const book=add(new THREE.BoxGeometry(.20,.27,.045),0x38635a,0,.02,0),pages=add(new THREE.BoxGeometry(.18,.25,.048),0xf3e5c4,0,.02,.005),cup=add(new THREE.CylinderGeometry(.062,.043,.14,20),0xf8f2df,0,.02,0);
  const sleeve=add(new THREE.CylinderGeometry(.045,.057,.23,14),0xeee5dc,.045,-.21,.02);sleeve.rotation.z=.22;add(new THREE.SphereGeometry(.048,14,10),0xedc29e,.02,-.1,.016);
+ const carrot=createCarrotProp(THREE);carrot.root.scale.setScalar(.9);carrot.root.position.y=.025;root.add(carrot.root);carrot.root.visible=false;
  root.visible=false;
- return{update(kind,t,first){root.visible=first&&!!kind;book.visible=pages.visible=kind==='book';cup.visible=kind==='cup';root.rotation.y=-.18;root.position.y=-.30+Math.sin(t*2)*.004;},dispose(){root.removeFromParent();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());}};
+ return{update(kind,t,first,pose={}){const age=Number.isFinite(pose.serverTime)?(pose.serverTime-(pose.actionAt||0))/1000:10,petting=pose.action==='pet'&&age>=0&&age<.7,bonking=pose.action==='bonk'&&age>=0&&age<.35,swing=bonking?Math.sin(age/.35*Math.PI):0;root.visible=first&&(!!kind||petting);book.visible=pages.visible=kind==='book';cup.visible=kind==='cup';carrot.root.visible=kind==='carrot';root.rotation.set(petting?-.48+Math.sin(age*23)*.08:-swing*.62,-.18,petting?-.22:-swing*.12);root.position.set(.32,-.30+Math.sin(t*2)*.004+(petting?.17:swing*.10),-.66-(petting?.09:swing*.12));},getStats:()=>({visible:root.visible,carrot:carrot.root.visible&&root.visible}),dispose(){root.removeFromParent();carrot.dispose();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());}};
 }
