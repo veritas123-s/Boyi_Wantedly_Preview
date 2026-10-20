@@ -1,5 +1,5 @@
 import {createKeyBindings} from './controls.js?v=82c90828dff7';
-import {createSocialClient} from './social.js?v=414fec27d21d';
+import {createSocialClient} from './social.js?v=ef9291ce00e1';
 import {createAvatar} from './avatars.js?v=4fe52b133d50';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=d304de7aeb16';
 import {createCinemaPlayer} from './cinema-player.js?v=d64851f958e1';
