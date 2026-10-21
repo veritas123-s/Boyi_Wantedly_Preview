@@ -10,4 +10,4 @@ function start(){creationNavigation();const menu=document.querySelector('.w-menu
  desktop.addEventListener('change',()=>{cancel();close();});window.addEventListener('pagehide',cancel);
 }if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();})();
 
-(()=>{const script=document.currentScript;if(script?.src)import(new URL('portal-guide.js?v=59a6fc5f3934',script.src)).catch(()=>{});})();
+(()=>{const script=document.currentScript;if(script?.src)import(new URL('portal-guide.js?v=93dc894c3fb8',script.src)).catch(()=>{});})();

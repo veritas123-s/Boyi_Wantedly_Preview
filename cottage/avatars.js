@@ -1,5 +1,13 @@
 // Original lightweight 3D characters, with reference-inspired owner styling.
 import { createNaidan } from './naidan.js?v=6c17b37b7837';
+const avatarMetrics=Object.freeze({human:Object.freeze({height:1.65,radius:.31,eyeHeight:1.65,seatedEyeHeight:1.30}),naidan:Object.freeze({height:.90,radius:.42,eyeHeight:.70,seatedEyeHeight:1.25})});
+export function getAvatarMetrics(avatarId){return avatarId==='naidan'?avatarMetrics.naidan:avatarMetrics.human;}
+function createSpeakingIndicator(THREE,parent,height){
+ const root=new THREE.Group();root.name='Speaking indicator';root.position.y=height;root.visible=false;parent.add(root);
+ const material=new THREE.MeshBasicMaterial({color:0x83e4bb,depthWrite:false}),geometry=new THREE.BoxGeometry(.035,1,.025),bars=[];
+ for(let i=0;i<3;i++){const bar=new THREE.Mesh(geometry,material);bar.position.x=(i-1)*.055;root.add(bar);bars.push(bar);}
+ const inverse=new THREE.Quaternion();return{root,update(t,camera,pose,heightOverride=height){root.visible=typeof pose.speaking==='boolean'?pose.speaking:!!pose.voiceEnabled&&Number.isFinite(pose.speakingUntil)&&pose.speakingUntil>(pose.serverTime||Date.now());root.position.y=heightOverride;if(!root.visible)return;for(let i=0;i<bars.length;i++)bars[i].scale.y=.075+Math.abs(Math.sin(t*9+i*1.4))*.075;if(camera){inverse.copy(parent.quaternion).invert();root.quaternion.copy(camera.quaternion).premultiply(inverse);}},dispose(){root.removeFromParent();geometry.dispose();material.dispose();}};
+}
 const contactShadowCache=new WeakMap();
 function acquireContactShadow(THREE){
  let entry=contactShadowCache.get(THREE);
@@ -26,7 +34,7 @@ export function createCarrotProp(THREE){
  let disposed=false;return{root,dispose(){if(disposed)return;disposed=true;root.removeFromParent();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());}};
 }
 export function createAvatar(THREE,{avatarId='visitor',variant=0,name='访客',quality='balanced'}={}){
- if(avatarId==='naidan')return createNaidanAvatar(THREE,{name,quality});
+ if(avatarId==='naidan')return createNaidanAvatar(THREE,{name,quality:quality==='ultra'?'smooth':quality});
  const owner=avatarId==='zhang-jiayu',preset=avatarPresets.find(p=>p.id===avatarId)||{coat:0x9aafac,hair:0x52483c,style:'short'};
  const root=new THREE.Group(),shape=new THREE.Group();root.add(shape);root.name='avatar';
  const geometries=[],materials=[],textures=[],bins=new Map(),customMeshes=[],temporary=new THREE.Object3D();
@@ -150,6 +158,7 @@ export function createAvatar(THREE,{avatarId='visitor',variant=0,name='访客',q
  const bookCover=new THREE.Mesh(G(new THREE.BoxGeometry(.20,.27,.055)),accent);held.add(bookCover);const pages=new THREE.Mesh(G(new THREE.BoxGeometry(.176,.246,.06)),white);pages.position.z=.006;held.add(pages);
  const cup=new THREE.Mesh(G(new THREE.CylinderGeometry(.065,.045,.13,20)),white);cup.position.y=.05;held.add(cup);const handle=new THREE.Mesh(G(new THREE.TorusGeometry(.046,.012,6,16)),white);handle.position.set(.062,.055,0);held.add(handle);held.visible=false;
  const carrot=createCarrotProp(THREE);carrot.root.position.y=.035;held.add(carrot.root);carrot.root.visible=false;
+ const speaking=createSpeakingIndicator(THREE,root,2.02);
  let disposed=false;
 
  return{root,setPose(x,z,yaw,dt=.016){const f=1-Math.exp(-dt*12);root.position.x+=(x-root.position.x)*f;root.position.z+=(z-root.position.z)*f;const diff=Math.atan2(Math.sin(yaw-root.rotation.y),Math.cos(yaw-root.rotation.y));root.rotation.y+=diff*f;},update(t,camera,moving=false,pose={}){
@@ -165,21 +174,22 @@ export function createAvatar(THREE,{avatarId='visitor',variant=0,name='访客',q
   if(pose.action==='pet'&&age>=0&&age<.7){rightArm.rotation.x=-1.9+Math.sin(age*23)*.13;rightArm.rotation.z=-.3;}
   if(pose.action==='bonk'&&age>=0&&age<.35){rightArm.rotation.x=-1.45+Math.sin(age/.35*Math.PI)*.95;rightArm.rotation.z=-.16;}
   if(pose.action==='pickup'&&age>=0&&age<.65)rightArm.rotation.x=-Math.sin(age/.65*Math.PI)*.9;
-  shadow.visible=!seated&&(pose.jumpHeight||0)<.08;
+  shadow.visible=!seated&&(pose.jumpHeight||0)<.08;speaking.update(t,camera,pose);
   labelMesh.getWorldPosition(labelWorldPosition);labelMesh.visible=labelWorldPosition.distanceTo(camera.position)>1.15;labelMesh.scale.setScalar(Math.max(.55,Math.min(1,labelWorldPosition.distanceTo(camera.position)/2.8)));labelMesh.quaternion.copy(camera.quaternion);labelMesh.quaternion.premultiply(root.quaternion.clone().invert());
- },getRigPose:()=>({leftLeg:rig.leftLeg.rotation.x,rightLeg:rig.rightLeg.rotation.x,leftKnee:rig.leftKnee.rotation.x,rightArm:rightArm.rotation.x,held:held.visible,carrot:carrot.root.visible}),dispose(){if(disposed)return;disposed=true;root.removeFromParent();carrot.dispose();root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());contact.release();}};
+ },getMetrics:()=>getAvatarMetrics(avatarId),getRigPose:()=>({leftLeg:rig.leftLeg.rotation.x,rightLeg:rig.rightLeg.rotation.x,leftKnee:rig.leftKnee.rotation.x,rightArm:rightArm.rotation.x,held:held.visible,carrot:carrot.root.visible}),dispose(){if(disposed)return;disposed=true;root.removeFromParent();speaking.dispose();carrot.dispose();root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());contact.release();}};
 }
 
 function createNaidanAvatar(THREE,{name='奶蛋',quality='balanced'}={}){
- const root=new THREE.Group();root.name='avatar';const model=createNaidan(THREE,root,{quality});model.root.scale.setScalar(1.65/2.225);
+ const root=new THREE.Group();root.name='avatar';const metrics=getAvatarMetrics('naidan'),scale=metrics.height/2.225,model=createNaidan(THREE,root,{quality});model.root.scale.setScalar(scale);
  const canvas=document.createElement('canvas'),text=String(name).slice(0,18);canvas.height=96;let context=canvas.getContext('2d');context.font='500 30px Microsoft YaHei,sans-serif';canvas.width=Math.min(600,Math.max(128,Math.ceil(context.measureText(text).width)+44));context=canvas.getContext('2d');context.fillStyle='rgba(22,28,28,.48)';context.beginPath();context.roundRect(4,8,canvas.width-8,80,18);context.fill();context.font='500 30px Microsoft YaHei,sans-serif';context.textAlign='center';context.textBaseline='middle';context.fillStyle='#eee2c9';context.fillText(text,canvas.width/2,48);
- const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide});const geometry=new THREE.PlaneGeometry(Math.min(.96,Math.max(.38,canvas.width/470)),.17);const label=new THREE.Mesh(geometry,material);label.position.y=1.87;root.add(label);const world=new THREE.Vector3(),inverse=new THREE.Quaternion();let disposed=false;
- const contact=acquireContactShadow(THREE),shadowGeometry=new THREE.PlaneGeometry(1.65,1.30),shadowMaterial=new THREE.MeshBasicMaterial({map:contact.texture,transparent:true,depthWrite:false,opacity:.72,polygonOffset:true,polygonOffsetFactor:-1});const shadow=new THREE.Mesh(shadowGeometry,shadowMaterial);shadow.rotation.x=-Math.PI/2;shadow.position.y=.037;shadow.renderOrder=1;root.add(shadow);
- const hand=new THREE.Group();hand.name='Naidan side hand and prop';hand.position.set(.75,.79,.22);root.add(hand);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide});const geometry=new THREE.PlaneGeometry(Math.min(.96,Math.max(.38,canvas.width/470)),.17);const label=new THREE.Mesh(geometry,material);label.position.y=metrics.height+.18;root.add(label);const world=new THREE.Vector3(),inverse=new THREE.Quaternion();let disposed=false;
+ const contact=acquireContactShadow(THREE),shadowGeometry=new THREE.PlaneGeometry(.90,.72),shadowMaterial=new THREE.MeshBasicMaterial({map:contact.texture,transparent:true,depthWrite:false,opacity:.72,polygonOffset:true,polygonOffsetFactor:-1});const shadow=new THREE.Mesh(shadowGeometry,shadowMaterial);shadow.rotation.x=-Math.PI/2;shadow.position.y=.037;shadow.renderOrder=1;root.add(shadow);
+ const hand=new THREE.Group();hand.name='Naidan side hand and prop';hand.position.set(.40,.43,.12);hand.scale.setScalar(.75);root.add(hand);
  const handGeometry=new THREE.SphereGeometry(.075,12,10),handMaterial=new THREE.MeshStandardMaterial({color:0xf0ca6b,roughness:.75}),palm=new THREE.Mesh(handGeometry,handMaterial);hand.add(palm);
  const carrot=createCarrotProp(THREE);carrot.root.position.set(.025,.12,.035);hand.add(carrot.root);hand.visible=false;
+ const speaking=createSpeakingIndicator(THREE,root,metrics.height+.36);
  return {root,ready:model.ready,setPose(x,z,yaw,dt=.016){const f=1-Math.exp(-dt*12);root.position.x+=(x-root.position.x)*f;root.position.z+=(z-root.position.z)*f;const diff=Math.atan2(Math.sin(yaw-root.rotation.y),Math.cos(yaw-root.rotation.y));root.rotation.y+=diff*f;},
-  update(t,camera,moving=false,pose={}){if(disposed)return;/* Static body: only the separate side hand/prop expresses social actions. */const age=(Number.isFinite(pose.serverTime)?pose.serverTime-(pose.actionAt||0):10000)/1000,petting=pose.action==='pet'&&age>=0&&age<.7,bonking=pose.action==='bonk'&&age>=0&&age<.35,waving=pose.action==='wave'&&age>=0&&age<2;carrot.root.visible=pose.heldKind==='carrot'||pose.equippedItemId==='carrot';hand.visible=carrot.root.visible||petting||bonking||waving;hand.position.set(.75,petting?1.32:.79,.22);hand.rotation.set(bonking?Math.sin(age/.35*Math.PI)*1.1:0,0,petting?Math.sin(age*22)*.16:waving?.5+Math.sin(age*16)*.22:0);shadow.visible=!pose.seatId&&(pose.jumpHeight||0)<.08;if(camera){label.getWorldPosition(world);const d=world.distanceTo(camera.position);label.visible=d>1.15;label.scale.setScalar(Math.max(.55,Math.min(1,d/2.8)));inverse.copy(root.quaternion).invert();label.quaternion.copy(camera.quaternion).premultiply(inverse);}},
-  getRigPose:()=>({leftLeg:0,rightLeg:0,leftKnee:0,rightArm:0,held:carrot.root.visible,carrot:carrot.root.visible,sideHand:hand.visible}),getModelStats:model.stats,
-  dispose(){if(disposed)return;disposed=true;carrot.dispose();handGeometry.dispose();handMaterial.dispose();model.dispose();geometry.dispose();material.dispose();texture.dispose();shadowGeometry.dispose();shadowMaterial.dispose();contact.release();root.removeFromParent();}};
+  update(t,camera,moving=false,pose={}){if(disposed)return;/* Static body: seating translates it; only the separate side hand/prop expresses social actions. */const seat=pose.seatId?(pose.seatHeight||.55):0;model.root.position.y=seat;label.position.y=metrics.height+.18+seat;speaking.update(t,camera,pose,metrics.height+.36+seat);const age=(Number.isFinite(pose.serverTime)?pose.serverTime-(pose.actionAt||0):10000)/1000,petting=pose.action==='pet'&&age>=0&&age<.7,bonking=pose.action==='bonk'&&age>=0&&age<.35,waving=pose.action==='wave'&&age>=0&&age<2;carrot.root.visible=pose.heldKind==='carrot'||pose.equippedItemId==='carrot';hand.visible=carrot.root.visible||petting||bonking||waving;hand.position.set(.40,(petting?.72:.43)+seat,.12);hand.rotation.set(bonking?Math.sin(age/.35*Math.PI)*1.1:0,0,petting?Math.sin(age*22)*.16:waving?.5+Math.sin(age*16)*.22:0);shadow.visible=!pose.seatId&&(pose.jumpHeight||0)<.08;if(camera){label.getWorldPosition(world);const d=world.distanceTo(camera.position);label.visible=d>1.15;label.scale.setScalar(Math.max(.55,Math.min(1,d/2.8)));inverse.copy(root.quaternion).invert();label.quaternion.copy(camera.quaternion).premultiply(inverse);}},
+  getMetrics:()=>metrics,getRigPose:()=>({leftLeg:0,rightLeg:0,leftKnee:0,rightArm:0,held:carrot.root.visible,carrot:carrot.root.visible,sideHand:hand.visible}),getModelStats:()=>({...model.stats(),renderedDimensions:{width:2.03*scale,height:metrics.height,depth:1.604*scale},collisionRadius:metrics.radius}),
+  dispose(){if(disposed)return;disposed=true;speaking.dispose();carrot.dispose();handGeometry.dispose();handMaterial.dispose();model.dispose();geometry.dispose();material.dispose();texture.dispose();shadowGeometry.dispose();shadowMaterial.dispose();contact.release();root.removeFromParent();}};
 }

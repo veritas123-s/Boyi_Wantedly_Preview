@@ -1,14 +1,14 @@
-import { createBoyiFairy } from './scene.js?v=32a3d67967c6';
-import { ROOM_LAYOUT } from './room-layout.js?v=9528bdbc62f4';
+import { createBoyiFairy } from './scene.js?v=88fe2ad16406';
+import { ROOM_LAYOUT, ROOM_ORIGINS, ROOM_BOUNDS, ROOM_CONNECTIONS, ROOM_PORTALS } from './room-layout.js?v=87b8be1d1b17';
 
 export function createCinemaScene(THREE, scene, { textures = {}, quality = 'balanced', reduced = false } = {}) {
-  const tier = ['smooth', 'high'].includes(quality) ? quality : 'balanced';
+  const tier = ['ultra','smooth', 'high'].includes(quality) ? quality : 'balanced';const ultra=tier==='ultra';
   const root = new THREE.Group(); root.name = 'Boyi cinema';
   const geometries = new Set(), materials = new Set(), ownedTextures = new Set(), batches = new Map();
   const colliders = [], interactables = [], temp = new THREE.Object3D();
   let disposed = false, video = null, videoTexture = null;
   const G = g => (geometries.add(g), g), M = m => (materials.add(m), m);
-  const standard = options => M(new THREE.MeshStandardMaterial(options));
+  const standard = options => M(new THREE.MeshStandardMaterial(ultra?{...options,normalMap:null,roughnessMap:null,bumpMap:null}:options));
   const basic = options => M(new THREE.MeshBasicMaterial(options));
   const borrowed = key => textures[key]?.isTexture ? textures[key] : null;
   const box = G(new THREE.BoxGeometry(1, 1, 1));
@@ -69,10 +69,14 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   B(stone, 0, -.12, 0, 12, .18, 14);
   for (let x = 0; x < 12; x++) for (let z = 0; z < 14; z++)
     B((x + z) % 4 ? wood : walnut, x - 5.5, -.025, z - 6.5, .975, .05, .975);
-  for (const side of [-1, 1]) {
-    B(plaster, side * 5.9, 2.8, 0, .2, 5.6, 14);
-    colliders.push({ minX: side < 0 ? -6 : 5.58, maxX: side < 0 ? -5.58 : 6, minZ: -7, maxZ: 7 });
+  B(plaster,5.9,2.8,0,.2,5.6,14);
+  colliders.push({id:'cinema-east-wall',minX:5.58,maxX:6,minZ:-7,maxZ:7,minY:0,maxY:Infinity});
+  // A true west opening; the cottage owns the single hinged door.
+  for(const [z,d] of [[-3.9,6.2],[3.9,6.2]]){
+    B(plaster,-5.9,2.8,z,.2,5.6,d);
+    colliders.push({id:'cinema-west-wall-'+z,minX:-6,maxX:-5.58,minZ:z-d/2,maxZ:z+d/2,minY:0,maxY:Infinity});
   }
+  B(plaster,-5.9,4.4,0,.2,2.4,1.6);
   for (const side of [-1, 1]) {
     B(plaster, 0, 2.8, side * 6.9, 11.6, 5.6, .2);
     colliders.push({ minX: -6, maxX: 6, minZ: side < 0 ? -7 : 6.55, maxZ: side < 0 ? -6.55 : 7 });
@@ -86,14 +90,15 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   const poster = basic({ map: lettering(['博医放映室', '共看 · 共谈', '让好故事在此相遇']), toneMapped: false });
   for (const side of [-1, 1]) {
     for (let z = -5; z <= 5; z += 2) {
+      if(side<0&&Math.abs(z)<1.7)continue;
       B(wood, side * 5.76, 1.15, z, .08, 1.95, 1.7); B(walnut, side * 5.705, 1.2, z, .035, 1.65, 1.42);
       B(copper, side * 5.675, 1.2, z - .72, .025, 1.72, .025);
     }
-    B(copper, side * 5.665, 2.18, 0, .025, .035, 13.2); B(wood, side * 5.69, .12, 0, .16, .24, 13.4);
-    B(wood, side * 5.69, 3.2, -.9, .12, 1.85, 1.3);
-    batch(plane, poster, [side * 5.61, 3.2, -.9], [1.08, 1.55, 1], [0, -side * Math.PI / 2, 0]);
+    if(side>0){B(copper, side * 5.665, 2.18, 0, .025, .035, 13.2);B(wood, side * 5.69, .12, 0, .16, .24, 13.4);}else for(const z of [-3.85,3.85]){B(copper,-5.665,2.18,z,.025,.035,6.1);B(wood,-5.69,.12,z,.16,.24,6.1);}
+    B(wood, side * 5.69, 3.8, -1.4, .12, 1.2, 1.0);
+    batch(plane, poster, [side * 5.61, 3.8, -1.4], [.85, 1.1, 1], [0, -side * Math.PI / 2, 0]);
     for (let z=-5.4;z<5.6;z+=.8)B(glow,side*3.29,.035,z,.036,.014,.18);
-    for (const z of [-4.9, 1.1, 4.7]) {
+    for (const z of [-4.9, 3.6, 4.7]) {
       B(copper, side * 5.52, 3.4, z, .08, .65, .26); B(copper, side * 5.48, 3.25, z, .35, .06, .06);
       batch(sphere, glow, [side * 5.35, 3.55, z], [.12, .22, .12]);
     }
@@ -106,7 +111,7 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
       B(bookMaterials[i % 3], side * 5.13, .61 + h / 2, z, .12, h, .095);
       B(copper, side * 5.063, .69, z, .008, .018, .07);
     }
-    colliders.push({ minX: side < 0 ? -5.75 : 5.05, maxX: side < 0 ? -5.05 : 5.75, minZ: 1.03, maxZ: 2.87 });
+    colliders.push({id:'cinema-bookcase-'+side,minX:side<0?-5.75:5.05,maxX:side<0?-5.05:5.75,minZ:1.03,maxZ:2.87,minY:0,maxY:1.13});
     const logo = borrowed(side < 0 ? 'schoolLogo' : 'boyiLogo') || lettering(side < 0 ? ['上海交通大学', '医学院'] : ['博医', '博医放映室']);
     const image = logo.image, aspect = image?.width > 0 && image?.height > 0 ? image.width / image.height : 1;
     const width = aspect >= 1 ? 1.06 : 1.06 * aspect, height = aspect >= 1 ? 1.06 / aspect : 1.06;
@@ -132,7 +137,7 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
       batch(arm, velvet, [side * 2.58, 0, z], [1, 1, 3.3]);
       batch(ring, copper, [side * 2.58, .7, z - .48], [.09, .09, .09]);
     }
-    colliders.push({ minX: -2.75, maxX: 2.75, minZ: z - .625, maxZ: z + .625 });
+    colliders.push({id:'cinema-sofa-seat-'+z,minX:-2.75,maxX:2.75,minZ:z-.625,maxZ:z+.32,minY:0,maxY:.52});colliders.push({id:'cinema-sofa-back-'+z,minX:-2.75,maxX:2.75,minZ:z+.32,maxZ:z+.625,minY:0,maxY:1.34});
   }
   B(copper, 0, 2.6, -6.25, 8.48, 4.98, .06); B(walnut, 0, 2.6, -6.15, 8.32, 4.82, .12);
   for (const side of [-1, 1]) for (let i = 0; i < 6; i++)
@@ -143,31 +148,11 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   const screen = mesh(plane, screenMaterial, [0, 2.6, -6.05], [8, 4.5, 1]);
   screen.name = 'Cinema screen'; screen.userData.interactionId = 'cinema';
   interactables.push({ id: 'cinema', label: '放映控制', object: screen, point: new THREE.Vector3(0, 2.6, -6.05) });
-  // The exit is a physical hinged leaf. The separate frame stays still and
-  // cannot masquerade as a solid interaction target after the door opens.
-  const doorFrame=new THREE.Group();doorFrame.name='Cinema exit frame';doorFrame.position.set(4.5,0,5.95);doorFrame.rotation.y=Math.PI;root.add(doorFrame);
-  const doorHinge=new THREE.Group();doorHinge.name='Cinema exit hinged leaf';doorHinge.position.x=-.675;doorFrame.add(doorHinge);
-  function doorMesh(g,m,p,scale=[1,1,1],owner=doorHinge){const o=new THREE.Mesh(g,m);o.position.set(...p);o.scale.set(...scale);o.receiveShadow=true;owner.add(o);return o;}
-  doorMesh(box,wood,[.675,1.325,0],[1.35,2.65,.09]);
-  for(const x of [-.75,.75])doorMesh(box,copper,[x,1.435,0],[.14,2.87,.25],doorFrame);
-  doorMesh(box,copper,[0,2.87,0],[1.65,.14,.25],doorFrame);
-  for(const x of [.085,1.265])doorMesh(box,copper,[x,1.34,.064],[.025,2.38,.028]);
-  for(const y of [.18,.7,2.04,2.52])doorMesh(box,copper,[.675,y,.064],[1.18,.026,.025]);
-  for(const y of [.3,1.32,2.35])doorMesh(cylinder,copper,[.015,y,.015],[.027,.18,.027]);
-  doorMesh(sphere,copper,[1.14,1.15,.13],[.055,.055,.055]);
-  doorMesh(plane,basic({map:lettering(['回到博医小屋','靠近后互动开关门']),toneMapped:false}),[.675,1.89,.067],[1.02,.56,1]);
-  doorMesh(box,basic({color:0x30261e}),[0,1.37,-.92],[1.45,2.74,.05],doorFrame);
-  for(const x of [-.72,.72])doorMesh(box,walnut,[x,1.37,-.45],[.04,2.74,.88],doorFrame);
-  doorMesh(box,walnut,[0,2.74,-.45],[1.45,.04,.9],doorFrame);
-  doorMesh(plane,basic({map:lettering(['博医小屋','二楼 · 阅读与思考']),toneMapped:false}),[0,1.7,-.88],[1.13,.63,1],doorFrame);
-  for(const x of [-.59,.59])doorMesh(box,basic({color:0xffc38e,toneMapped:false}),[x,1.55,-.86],[.024,1.8,.018],doorFrame);
-  const doorInteraction={id:'cinema-door-toggle',label:'打开通往博医小屋的门',object:doorHinge,point:new THREE.Vector3(4.5,1.3,5.8)};interactables.push(doorInteraction);
-  const doorBlocker={minX:0,maxX:0,minZ:0,maxZ:0};colliders.push(doorBlocker);
-  let doorOpen=false,doorAngle=0,doorInitialized=false;const doorCorners=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
-  function poseDoor(){doorHinge.rotation.y=doorAngle;doorHinge.updateWorldMatrix(true,true);let i=0;doorBlocker.minX=doorBlocker.minZ=Infinity;doorBlocker.maxX=doorBlocker.maxZ=-Infinity;for(const x of [0,1.35])for(const z of [-.06,.06]){const p=doorCorners[i++].set(x,.1,z);doorHinge.localToWorld(p);doorBlocker.minX=Math.min(doorBlocker.minX,p.x);doorBlocker.maxX=Math.max(doorBlocker.maxX,p.x);doorBlocker.minZ=Math.min(doorBlocker.minZ,p.z);doorBlocker.maxZ=Math.max(doorBlocker.maxZ,p.z);}doorInteraction.point.set(1.14,1.15,.13);doorHinge.localToWorld(doorInteraction.point);}
-  function setCinemaDoor(value){doorOpen=Boolean(value);doorInteraction.label=doorOpen?'关闭通往博医小屋的门':'打开通往博医小屋的门';if(!doorInitialized){doorInitialized=true;doorAngle=doorOpen?-1.45:0;poseDoor();}}
-  function getPortal(p){return doorOpen&&doorAngle<-.98&&p&&p.z>6.12&&p.z<6.6&&Math.abs(p.x-4.5)<.52?'cottage':null;}
-  poseDoor();
+  // Door geometry and its moving collider live once in the cottage scene.
+  // App includes that same leaf when raycasting from either side of the opening.
+  let doorOpen=false;
+  function setCinemaDoor(value){doorOpen=Boolean(value);}
+  function getPortal(p){return doorOpen&&p&&p.x<=-5.98&&p.x>-6.4&&Math.abs(p.z)<.8?'cottage':null;}
   B(walnut, 0, 4.65, 5.65, .64, .3, .5);
   batch(cylinder, glow, [0, 4.65, 5.36], [.09, .1, .09], [Math.PI / 2, 0, 0]);
   const origin = new THREE.Vector3(0, 4.65, 5.3), destination = new THREE.Vector3(0, 2.6, -6.05);
@@ -176,10 +161,10 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()); beam.visible = false;
   const ambient = new THREE.HemisphereLight(0xffe2bc, 0x342232, 1.2); root.add(ambient);
   const key = new THREE.SpotLight(0xffdfb3, 135, 22, 1.03, .65, 2); key.position.set(0, 5.1, 3.8);
-  key.target.position.set(0, .4, -.8); key.castShadow = tier !== 'smooth' && !reduced;
+  key.target.position.set(0, .4, -.8); key.castShadow = tier !== 'smooth' && !ultra && !reduced;
   key.shadow.mapSize.set(tier==='high'?2048:1024,tier==='high'?2048:1024);key.shadow.autoUpdate=false;key.shadow.needsUpdate=true; key.shadow.camera.near = .3; key.shadow.camera.far = 22; key.shadow.bias = -.0003;
   root.add(key, key.target);
-  const roomLight = new THREE.PointLight(0xffc58e, 15, 12, 2); roomLight.position.set(0, 3.8, 1.5); root.add(roomLight);
+  const roomLight = new THREE.PointLight(0xffc58e, 15, 12, 2); roomLight.position.set(0, 3.8, 1.5); if(ultra){roomLight.intensity=0;key.intensity=0;roomLight.visible=key.visible=false;}root.add(roomLight);
   for (const b of batches.values()) {
     const object = new THREE.InstancedMesh(b.geometry, b.material, b.matrices.length);
     b.matrices.forEach((matrix, i) => object.setMatrixAt(i, matrix)); object.instanceMatrix.needsUpdate = true;
@@ -187,7 +172,7 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
     object.computeBoundingSphere(); b.owner.add(object);
   }
   batches.clear();
-  const fairy = createBoyiFairy(THREE, root, { reduced, colliders }); interactables.push(fairy.interactable);
+  const fairy = createBoyiFairy(THREE, root, { reduced:reduced||ultra, colliders,bounds:ROOM_BOUNDS.cinema,lightEnabled:!ultra }); interactables.push(fairy.interactable);
   const stats = { sceneKind:'private-cinema',originalLogoCount:2,rendererMeasured:false,quality: tier, seatCount: seats.length, sofaRows: 2, meshSubmissionsEstimate: 0, instancedMeshes: 0, pointLights: 0, shadowLights: 0, videoAttached: false, disposed: false,
     get spriteFollowing() { return fairy.stats.spriteFollowing; }, get spriteGestureCount() { return fairy.stats.spriteGestureCount; } };
   root.traverse(o => { if (o.isMesh) stats.meshSubmissionsEstimate++; if (o.isInstancedMesh) stats.instancedMeshes++; if (o.isPointLight) stats.pointLights++; if (o.isLight && o.castShadow) stats.shadowLights++; });
@@ -201,19 +186,19 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
     screenMaterial.map = replacement || ready; screenMaterial.needsUpdate = true;
     previous?.dispose(); stats.videoAttached = next !== null; beam.visible = false;
   }
-  return { root, colliders, interactables, spawn: { x: 4.5, z: 4.8, yaw: 0 }, stats, setVideo, setCinemaDoor, getPortal,
+  return {root,origin:ROOM_ORIGINS.cinema,bounds:ROOM_BOUNDS.cinema,connection:ROOM_CONNECTIONS.cinema,connections:ROOM_PORTALS.cinema,colliders,interactables,setCompanionActive(active){fairy.setActive(active);root.traverse(o=>{if(o.isHemisphereLight||o.isAmbientLight||o.isDirectionalLight)o.visible=Boolean(active);});},spawn: { x: 4.5, z: 4.8, yaw: 0 }, stats, setVideo, setCinemaDoor, getPortal,
     setViewerPose(pose = {}) {
       if (disposed || ![pose.x, pose.y, pose.z, pose.yaw].every(Number.isFinite)) return;
-      fairy.setViewerPose({ ...pose, x: Math.max(-5.58, Math.min(5.58, pose.x)), z: Math.max(-6.55, Math.min(6.55, pose.z)) });
+      fairy.setViewerPose(pose);
     },
     setSpriteState(state = 'idle') { if (!disposed) fairy.setSpriteState(state); },
     setNightMode(night = true) {
       if (disposed) return; ambient.intensity = night ? .34 : .85; key.intensity = night ? 30 : 90;
-      roomLight.intensity = night ? 7 : 15; glow.emissiveIntensity = night ? .5 : .75;
+      roomLight.intensity = ultra?0:night?7:15;key.intensity=ultra?0:key.intensity; glow.emissiveIntensity = night ? .5 : .75;
     },
     update(seconds, dt = 0) {
-      if (disposed) return; fairy.update(seconds, dt);const target=doorOpen?-1.45:0;if(Math.abs(target-doorAngle)>.001){doorAngle+=(target-doorAngle)*(1-Math.exp(-Math.max(0,Math.min(.05,dt||0))*8.5));if(Math.abs(target-doorAngle)<.001)doorAngle=target;poseDoor();}
-      beam.visible = !!video && !video.paused && !video.ended && video.readyState >= 2;
+      if (disposed) return; fairy.update(seconds, dt);
+      beam.visible = !ultra && !!video && !video.paused && !video.ended && video.readyState >= 2;
     },
     dispose() {
       if (disposed) return; disposed = true; fairy.dispose(); root.removeFromParent();

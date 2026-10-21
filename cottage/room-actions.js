@@ -1,11 +1,11 @@
-import {ROOM_LAYOUT} from './room-layout.js?v=9528bdbc62f4';
-import {createCarrotProp} from './avatars.js?v=00612df937d1';
+import {ROOM_LAYOUT} from './room-layout.js?v=87b8be1d1b17';
+import {createCarrotProp} from './avatars.js?v=62a22527fc64';
 export function attachRoomActions(THREE,world,room){
  const root=new THREE.Group();root.name='Interactive seats and handheld objects';world.root.add(root);
  const geometries=new Set(),materials=new Set(),textures=new Set(),items=new Map();
  const G=g=>(geometries.add(g),g),M=m=>(materials.add(m),m);
  const leather=M(new THREE.MeshStandardMaterial({color:0x233b38,roughness:.65})),paper=M(new THREE.MeshStandardMaterial({color:0xf3e4c4,roughness:.85})),gold=M(new THREE.MeshStandardMaterial({color:0xac8a52,roughness:.3,metalness:.7}));
- const proxy=M(new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false}));
+ const proxy=M(new THREE.MeshBasicMaterial({visible:false,transparent:true,opacity:0,depthWrite:false,colorWrite:false}));
  function mesh(g,m,parent=root){const o=new THREE.Mesh(G(g),m);parent.add(o);return o;}
  for(const seat of ROOM_LAYOUT[room].seats){const o=mesh(new THREE.BoxGeometry(.82,1.38,.84),proxy);o.position.set(seat.x,.72,seat.z);world.interactables.push({id:'seat',seatId:seat.id,label:'坐上'+seat.label,object:o,point:new THREE.Vector3(seat.x,.85,seat.z)});}
  for(const item of ROOM_LAYOUT[room].items){const group=new THREE.Group();group.position.set(item.x,item.y,item.z);root.add(group);items.set(item.id,group);
@@ -13,37 +13,35 @@ export function attachRoomActions(THREE,world,room){
   else{const cup=mesh(new THREE.CylinderGeometry(.082,.058,.16,24,1,true),paper,group);cup.position.y=.08;const tea=mesh(new THREE.CircleGeometry(.073,24),M(new THREE.MeshStandardMaterial({color:0x51301c,roughness:.25})),group);tea.rotation.x=-Math.PI/2;tea.position.y=.145;const handle=mesh(new THREE.TorusGeometry(.052,.013,8,20),paper,group);handle.position.set(.08,.08,0);}
   world.interactables.push({id:'item',itemId:item.id,label:item.label,object:group,point:new THREE.Vector3(item.x,item.y,item.z)});
  }
- let updateDoor=null;
+ const doors=[];
  if(room==='cottage'){
-  const door=new THREE.Group();door.name='Screening-room door frame';door.position.set(5.56,0,2.6);door.rotation.y=-Math.PI/2;root.add(door);
-  // Only the leaf is raycastable. The empty doorway never blocks E targeting.
-  const hinge=new THREE.Group();hinge.name='Cinema door hinged leaf';hinge.position.x=-.675;door.add(hinge);
-  const panel=mesh(new THREE.BoxGeometry(1.35,2.65,.09),leather,hinge);panel.position.set(.675,1.325,0);panel.receiveShadow=true;
-  for(const x of [-.75,.75]){const frame=mesh(new THREE.BoxGeometry(.14,2.87,.25),gold,door);frame.position.set(x,1.435,0);}
-  const header=mesh(new THREE.BoxGeometry(1.65,.14,.25),gold,door);header.position.y=2.87;
-  for(const x of [.085,1.265]){const mould=mesh(new THREE.BoxGeometry(.025,2.38,.028),gold,hinge);mould.position.set(x,1.34,.064);}
-  for(const y of [.18,.7,2.04,2.52]){const mould=mesh(new THREE.BoxGeometry(1.18,.026,.025),gold,hinge);mould.position.set(.675,y,.064);}
-  for(const y of [.3,1.32,2.35]){const pin=mesh(new THREE.CylinderGeometry(.027,.027,.18,10),gold,hinge);pin.position.set(.015,y,.015);}
-  const knob=mesh(new THREE.SphereGeometry(.055,14,10),gold,hinge);knob.position.set(1.14,1.15,.13);
-  const rose=mesh(new THREE.CylinderGeometry(.085,.085,.018,18),gold,hinge);rose.rotation.x=Math.PI/2;rose.position.set(1.14,1.15,.063);
-  const c=document.createElement('canvas');c.width=512;c.height=192;const ctx=c.getContext('2d');ctx.fillStyle='#e1c997';ctx.font='600 62px Microsoft YaHei,sans-serif';ctx.textAlign='center';ctx.fillText('博医放映室',256,100);ctx.font='22px sans-serif';ctx.fillText('BOYI CINEMA',256,153);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;textures.add(t);
-  const sign=mesh(new THREE.PlaneGeometry(1.03,.386),M(new THREE.MeshBasicMaterial({map:t,transparent:true})),hinge);sign.position.set(.675,1.88,.067);
-  const darkness=M(new THREE.MeshBasicMaterial({color:0x2b1722}));const recess=mesh(new THREE.BoxGeometry(1.43,2.74,.04),darkness,door);recess.position.set(0,1.37,-1.0);
-  for(const x of [-.72,.72]){const jamb=mesh(new THREE.BoxGeometry(.035,2.74,.98),leather,door);jamb.position.set(x,1.37,-.48);}
-  const carpet=mesh(new THREE.BoxGeometry(1.45,.025,1.1),leather,door);carpet.position.set(0,.018,-.47);
-  const soffit=mesh(new THREE.BoxGeometry(1.45,.04,1.1),leather,door);soffit.position.set(0,2.74,-.47);
-  const previewSign=mesh(new THREE.PlaneGeometry(1.16,.435),M(new THREE.MeshBasicMaterial({map:t,transparent:true,toneMapped:false})),door);previewSign.position.set(0,1.73,-.965);
-  for(const x of [-.59,.59]){const strip=mesh(new THREE.BoxGeometry(.024,1.8,.018),M(new THREE.MeshBasicMaterial({color:0xffc38e,toneMapped:false})),door);strip.position.set(x,1.55,-.945);}
-  const interaction={id:'cinema-door-toggle',label:'打开博医放映室的门',object:hinge,point:new THREE.Vector3(5.45,1.3,2.6)};world.interactables.push(interaction);
-  const blocker={minX:0,maxX:0,minZ:0,maxZ:0};world.colliders.push(blocker);
-  let open=false,angle=0,initialized=false;const corners=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
-  function poseDoor(){hinge.rotation.y=angle;hinge.updateWorldMatrix(true,true);let i=0;blocker.minX=blocker.minZ=Infinity;blocker.maxX=blocker.maxZ=-Infinity;for(const x of [0,1.35])for(const z of [-.06,.06]){const p=corners[i++].set(x,.1,z);hinge.localToWorld(p);blocker.minX=Math.min(blocker.minX,p.x);blocker.maxX=Math.max(blocker.maxX,p.x);blocker.minZ=Math.min(blocker.minZ,p.z);blocker.maxZ=Math.max(blocker.maxZ,p.z);}interaction.point.set(1.14,1.15,.13);hinge.localToWorld(interaction.point);}
-  world.setCinemaDoor=value=>{open=Boolean(value);interaction.label=open?'关闭博医放映室的门':'打开博医放映室的门';if(!initialized){initialized=true;angle=open?-1.45:0;poseDoor();}};
-  world.getPortal=p=>open&&angle<-.98&&p&&p.x>5.23&&p.x<5.65&&Math.abs(p.z-2.6)<.53?'cinema':null;
-  updateDoor=dt=>{const target=open?-1.45:0,step=1-Math.exp(-Math.max(0,Math.min(.05,dt||0))*8.5);if(Math.abs(target-angle)>.001){angle+=(target-angle)*step;if(Math.abs(target-angle)<.001)angle=target;poseDoor();}};
-  poseDoor();
+  function addPortalDoor({kind,label,x,z,rotation,target}){
+   const frame=new THREE.Group();frame.name=label+' shared doorway';frame.position.set(x,0,z);frame.rotation.y=rotation;root.add(frame);
+   const hinge=new THREE.Group();hinge.name=label+' single hinged leaf';hinge.position.x=-.8;frame.add(hinge);
+   const leaf=mesh(new THREE.BoxGeometry(1.6,3.05,.10),leather,hinge);leaf.position.set(.8,1.525,0);leaf.receiveShadow=true;
+   for(const side of[-1,1]){const jamb=mesh(new THREE.BoxGeometry(.14,3.2,.30),gold,frame);jamb.position.set(side*.88,1.6,0);}
+   const header=mesh(new THREE.BoxGeometry(1.9,.14,.30),gold,frame);header.position.y=3.2;
+   for(const xx of[.085,1.515]){const mould=mesh(new THREE.BoxGeometry(.025,2.78,.028),gold,hinge);mould.position.set(xx,1.53,.065);}
+   for(const yy of[.18,.78,2.17,2.88]){const mould=mesh(new THREE.BoxGeometry(1.44,.026,.025),gold,hinge);mould.position.set(.8,yy,.065);}
+   for(const yy of[.3,1.45,2.7]){const pin=mesh(new THREE.CylinderGeometry(.027,.18,.18,10),gold,hinge);pin.scale.x=.15;pin.scale.z=.15;pin.position.set(.015,yy,.015);}
+   for(const face of[-1,1]){const knob=mesh(new THREE.SphereGeometry(.055,14,10),gold,hinge);knob.position.set(1.37,1.18,face*.13);}
+   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=192;const ctx=canvas.getContext('2d');ctx.fillStyle='#e1c997';ctx.textAlign='center';ctx.font='600 60px "Microsoft YaHei",sans-serif';ctx.fillText(label,256,100);ctx.font='22px sans-serif';ctx.fillText(kind==='cinema'?'BOYI CINEMA':'BOYI CLASSROOM',256,153);const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;textures.add(texture);
+   for(const face of[-1,1]){const sign=mesh(new THREE.PlaneGeometry(1.22,.457),M(new THREE.MeshBasicMaterial({map:texture,transparent:true,toneMapped:false})),hinge);sign.position.set(.8,2.0,face*.067);sign.rotation.y=face>0?0:Math.PI;}
+   // Eight narrow boxes approximate the moving leaf without its former giant
+   // diagonal AABB pushing a nearby visitor sideways across the doorway.
+   const segments=Array.from({length:8},(_,i)=>{const c={id:kind+'-door-leaf-'+i,space:'world',minX:0,maxX:0,minZ:0,maxZ:0,minY:0,maxY:3.05};world.colliders.push(c);return c;});
+   const interaction={id:kind+'-door-toggle',label:'打开'+label+'的门',object:hinge,space:'world',point:new THREE.Vector3(x,1.3,z)};world.interactables.push(interaction);
+   const corners=Array.from({length:4},()=>new THREE.Vector3());let open=false,angle=0,initialized=false;
+   function pose(){hinge.rotation.y=angle;hinge.updateWorldMatrix(true,true);for(let i=0;i<segments.length;i++){const c=segments[i];c.minX=c.minZ=Infinity;c.maxX=c.maxZ=-Infinity;let n=0;for(const xx of[i*.2,(i+1)*.2])for(const zz of[-.055,.055]){const v=corners[n++].set(xx,.1,zz);hinge.localToWorld(v);c.minX=Math.min(c.minX,v.x);c.maxX=Math.max(c.maxX,v.x);c.minZ=Math.min(c.minZ,v.z);c.maxZ=Math.max(c.maxZ,v.z);}}interaction.point.set(1.37,1.18,.13);hinge.localToWorld(interaction.point);}
+   function setOpen(value){open=Boolean(value);interaction.label=(open?'关闭':'打开')+label+'的门';if(!initialized){initialized=true;angle=open?-Math.PI/2:0;pose();}}
+   world[kind==='cinema'?'setCinemaDoor':'setClassroomDoor']=setOpen;
+   const api={target,isPortal(p){return open&&angle<-.98&&p&&Math.abs(p.x-x)<.4&&Math.abs(p.z-z)<.8;},update(dt){const targetAngle=open?-Math.PI/2:0;if(Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-Math.max(0,Math.min(.05,dt||0))*8.5));if(Math.abs(targetAngle-angle)<.001)angle=targetAngle;pose();}}};doors.push(api);pose();
+  }
+  addPortalDoor({kind:'cinema',label:'博医放映室',x:6,z:2.6,rotation:-Math.PI/2,target:'cinema'});
+  addPortalDoor({kind:'classroom',label:'博医教室',x:-24,z:4.8,rotation:Math.PI/2,target:'classroom'});
+  world.getPortal=p=>doors.find(door=>door.isPortal(p))?.target||null;
  }
- if(updateDoor){const oldUpdate=world.update.bind(world);world.update=(seconds,dt=0)=>{oldUpdate(seconds,dt);updateDoor(dt);};}
+ if(doors.length){const oldUpdate=world.update.bind(world);world.update=(seconds,dt=0)=>{oldUpdate(seconds,dt);for(const door of doors)door.update(dt);};}
  const oldDispose=world.dispose.bind(world);let disposed=false;
  world.dispose=()=>{if(disposed)return;disposed=true;root.removeFromParent();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());oldDispose();};
  world.setOccupants=occupants=>{const held=new Set(occupants.map(p=>p.heldItemId).filter(Boolean));for(const [id,o]of items)o.visible=!held.has(id);};

@@ -1,4 +1,4 @@
-import {requestGuide,safeGuideSource} from './portal-guide.js?v=59a6fc5f3934';
+import {requestGuide,safeGuideSource} from './portal-guide.js?v=93dc894c3fb8';
 'use strict';
 const askForm=document.querySelector('#ask-form'),question=document.querySelector('#question'),askStatus=document.querySelector('#ask-status'),answer=document.querySelector('#ask-answer');
 const askButton=askForm.querySelector('button[type=submit]'),waiting=document.querySelector('#ask-waiting');

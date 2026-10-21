@@ -1,8 +1,10 @@
+import { ROOM_ORIGINS, ROOM_BOUNDS, ROOM_CONNECTIONS, ROOM_PORTALS } from './room-layout.js?v=87b8be1d1b17';
 /* Boyi Cottage: a self contained, original magical study.
  * Geometry, canvas textures and animation are local. No loader or network access.
  * The host owns the renderer, camera, input, wall bounds and question service.
  */
 export function createCottageScene(THREE, scene, { textures = {}, quality = 'balanced', reduced = false } = {}) {
+  const ultra=quality==='ultra';
   const root = new THREE.Group();
   root.name = 'Boyi magical study';
   scene.add(root);
@@ -16,7 +18,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   const range = (a, b) => a + (b - a) * random();
   const G = geometry => (geometries.add(geometry), geometry);
   const M = material => (materials.add(material), material);
-  const standard = options => M(new THREE.MeshStandardMaterial(options));
+  const standard = options => M(new THREE.MeshStandardMaterial(ultra?{...options,normalMap:null,roughnessMap:null,bumpMap:null}:options));
   const basic = options => M(new THREE.MeshBasicMaterial(options));
   const box = G(new THREE.BoxGeometry(1, 1, 1));
   const sphere = G(new THREE.SphereGeometry(1, 24, 16));
@@ -34,7 +36,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
     const texture = new THREE.CanvasTexture(canvas);
     if (color) texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.anisotropy = 4;
+    texture.anisotropy = ultra?1:4;
     ownedTextures.add(texture);
     return texture;
   };
@@ -63,7 +65,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
     if (!value) return fallback;
     const result = value.clone(); result.needsUpdate = true;
     result.wrapS = result.wrapT = THREE.RepeatWrapping;
-    result.anisotropy = 4; ownedTextures.add(result); return result;
+    result.anisotropy = ultra?1:4; ownedTextures.add(result); return result;
   };
   const woodColor = borrowedTexture(textures.woodColor, woodFallback);
   const stoneColor = borrowedTexture(textures.stoneColor, stoneFallback);
@@ -143,7 +145,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
     for(const sx of [-1,1])for(const sy of [-1,1])for(const sz of [-1,1])triangle([sx*half,sy*inner,sz*inner],[sx*inner,sy*half,sz*inner],[sx*inner,sy*inner,sz*half],[sx,sy,sz]);
     const geometry=G(new THREE.BufferGeometry());geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));return geometry;
   }
-  const stoneBlock=quality==='smooth'?box:chamferBox(.035);
+  const stoneBlock=(quality==='smooth'||ultra)?box:chamferBox(.035);
 
   function group(name, parent = root, position = [0,0,0], rotation = [0,0,0]) {
     const object = new THREE.Group(); object.name=name; object.position.set(...position); object.rotation.set(...rotation); parent.add(object); return object;
@@ -176,7 +178,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
     const r=width/2,shape=new THREE.Shape();shape.moveTo(-r,bottom);shape.lineTo(r,bottom);shape.lineTo(r,shoulder);shape.absarc(0,shoulder,r,0,Math.PI,false);shape.lineTo(-r,bottom);return shape;
   };
   const lineTube=(owner,points,radius,material,segments=32)=>mesh(owner,G(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p))),segments,radius,6,false)),material);
-  function collider(x,z,w,d){colliders.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});}
+  function collider(x,z,w,d,maxY=Infinity,id='solid-'+colliders.length,minY=0){const c={id,minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,minY,maxY};colliders.push(c);return c;}
   function interact(id,label,object,point){interactables.push({id,label,object,point:new THREE.Vector3(...point)});object.userData.interactionId=id;}
   function labelDecal(owner,x,y,z,width,height,labelIndex){
     const key=owner.uuid;if(!decals.has(key))decals.set(key,{owner,positions:[],uvs:[]});const data=decals.get(key),u=(labelIndex%8)/8,v=1-Math.floor(labelIndex/8)/4;
@@ -189,9 +191,8 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   const architecture = group('Stone, oak and mortise joints');
   const mortar=standard({color:0x4b4941,roughness:1});
   B(architecture,mortar,0,2.6,-7.19,12.4,5.3,.1);B(architecture,mortar,0,2.6,7.19,12.4,5.3,.1);
-  B(architecture,mortar,-6.19,2.6,0,.1,5.3,14.4);
-  B(architecture,mortar,6.19,.49,-2.67,.1,.98,8.94);B(architecture,mortar,6.19,.49,5.25,.1,.98,3.9);B(architecture,mortar,6.19,4.99,0,.1,.55,14.4);
-  B(architecture,mortar,6.19,2.9,-5.71,.1,4.0,2.89);B(architecture,mortar,6.19,2.9,.35,.1,4.0,2.96);B(architecture,mortar,6.19,2.9,5.25,.1,4.0,3.9);B(architecture,mortar,6.19,4.10,2.6,.1,2.24,1.54);
+  B(architecture,mortar,-6.19,2.6,1.45,.1,5.3,11.5);B(architecture,mortar,-6.19,2.6,-6.8,.1,5.3,.8);B(architecture,mortar,-6.19,4.65,-5.4,.1,1.2,2.0);
+  B(architecture,mortar,6.19,2.6,-2.65,.1,5.3,8.9);B(architecture,mortar,6.19,2.6,5.25,.1,5.3,3.7);B(architecture,mortar,6.19,4.15,2.6,.1,2.3,1.6);
   B(architecture,darkWood,0,-.14,0,12.45,.22,14.45);
   for(let col=0;col<24;col++) {
     const x=-5.75+col*.5,offset=(col%2)*.86;
@@ -220,11 +221,11 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
       const z=-6.65+col*.73+shift,front=Math.max(-7.15,z-.355),back=Math.min(7.15,z+.355);
       if(back<=front)continue;
       const tone=range(.8,1.12),tint=new THREE.Color().setRGB(tone,tone*.975,tone*.94);
-      B(architecture,stone,-6.02,y,(front+back)/2,.28,.307,back-front,[0,0,0],tint);
+      if(!(z>-6.4&&z<-4.4&&y<4.05))B(architecture,stone,-6.02,y,(front+back)/2,.28,.307,back-front,[0,0,0],tint);
       if(!insideWindow(z,y)&&!(Math.abs(z-2.6)<.92&&y<2.95))B(architecture,stone,6.02,y,(front+back)/2,.28,.307,back-front,[0,0,0],tint);
     }
   }
-  for(const x of [-5.82,5.82])for(const y of [.12,5.09]){if(x>0&&y<1){B(architecture,walnut,x,y,-2.63,.2,.22,8.8);B(architecture,walnut,x,y,5.24,.2,.22,3.57);}else B(architecture,walnut,x,y,0,.2,.22,14.05);}
+  for(const x of [-5.82,5.82])for(const y of [.12,5.09]){if(x<0&&y<1){B(architecture,walnut,x,y,1.4,.2,.22,11.4);B(architecture,walnut,x,y,-6.8,.2,.22,.4);}else if(x>0&&y<1){B(architecture,walnut,x,y,-2.63,.2,.22,8.8);B(architecture,walnut,x,y,5.24,.2,.22,3.57);}else B(architecture,walnut,x,y,0,.2,.22,14.05);}
   for(const z of [-6.87,6.87])B(architecture,walnut,0,5.12,z,12.15,.23,.26);
   for(const x of [-5.78,5.78])for(const z of [-6.7,-.2,6.7]) {
     B(architecture,walnut,x,2.6,z,.31,5.2,.31);
@@ -309,7 +310,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   const ladder=group('Library ladder',shelf,[1.35,0,1.04],[-.08,0,0]);
   for(const x of [-.3,.3])B(ladder,walnut,x,1.82,0,.085,3.6,.1);
   for(let i=0;i<11;i++)B(ladder,woodEdge,0,.2+i*.31,.03,.66,.055,.13);
-  collider(-5.18,-.75,1.43,6.94);
+  collider(-5.18,-.75,1.43,6.94,4.4,'library-bookcase');
   interact('shelf','翻阅书架',shelf,[-4.82,1.75,-1.1]);
 
   // Hearth, voussoir arch, carved mantle and copper celestial clock.
@@ -357,7 +358,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   for(let i=0;i<8;i++)C(fire,iron,-.9+i*.255,.46,.61,.014,.45);
   B(fire,iron,0,.28,.61,2.05,.035,.05);
   const hearthLight=new THREE.PointLight(0xffa451,34,9,2);hearthLight.position.set(0,1.1,-5.83);root.add(hearthLight);
-  collider(0,-6.05,3.8,1.35); interact('fire','壁炉旁坐一会儿',fire,[0,1.4,-5.92]);
+  collider(0,-6.05,3.8,1.35,3.4,'hearth-mantel'); interact('fire','壁炉旁坐一会儿',fire,[0,1.4,-5.92]);
 
   function circularChart(owner,x,y,z,radius=.7) {
     const chartTexture=canvasTexture(512,(c,s)=>{
@@ -411,16 +412,15 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   const archPoints=[];for(let i=0;i<=32;i++){const angle=i*Math.PI/32;archPoints.push([Math.cos(angle)*1.39,3.08+Math.sin(angle)*1.39,.13]);}
   lineTube(windowGroup,archPoints,.035,iron,48);
   lineTube(windowGroup,[[-1.08,3.76,.13],[0,2.45,.13],[1.08,3.76,.13]],.025,iron,24);
-  // Moonbeams are thin translucent planes, not an opaque screen overlay.
-  const moonShaft=basic({color:0xb7d1ef,transparent:true,opacity:.025,side:THREE.DoubleSide,depthWrite:false});
-  mesh(root,G(new THREE.PlaneGeometry(5.7,1.15)),moonShaft,[3.01,2.18,-2.65],[1,1,1],[0,0,-.47]).castShadow=false;
+  // Moonlight comes from the real directional light. A flat translucent
+  // shaft used to slice the wall and desk with a rectangular bright edge.
   interact('window','望向月夜',windowGroup,[5.45,2.55,-2.65]);
   const windowSeat=group('Deep window seat',root,[5.1,0,-2.65],[0,Math.PI/2,0]);
   B(windowSeat,walnut,0,.28,0,3.12,.5,.95);B(windowSeat,woodEdge,0,.51,0,3.2,.07,1.0);
   mesh(windowSeat,rounded(3.02,.1,.88,.055),leather,[0,.59,0]);
   for(const x of [-1.18,0,1.18]){B(windowSeat,woodEdge,x,.27,.493,.99,.37,.035);B(windowSeat,walnut,x,.27,.52,.88,.27,.02);S(windowSeat,brass,x,.29,.548,.026);}
   for(const x of [-1.2,1.2])mesh(windowSeat,rounded(.49,.34,.16,.09),leather,[x,.8,-.3],[1,1,1],[.12,0,x*.12]);
-  collider(5.1,-2.65,1.08,3.25);
+  collider(5.1,-2.65,1.08,3.25,.64,'window-seat');
 
   // Desk is placed on the right, leaving a clear central walking route.
   const desk=group('The writing desk',root,[2.72,0,-.28],[0,-.12,0]);
@@ -476,7 +476,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   for(const x of [-.32,.32])B(chair,walnut,x,1.02,-.3,.075,.98,.075);
   mesh(chair,rounded(.78,.14,.12,.04),walnut,[0,1.45,-.3]);mesh(chair,rounded(.54,.51,.065,.045),leather,[0,1.115,-.3]);
   for(const x of [-.15,0,.15])B(chair,woodEdge,x,1.13,-.345,.029,.52,.027);
-  collider(2.72,-.28,3.14,1.86);collider(2.78,1.14,.95,.95);
+  collider(2.72,-.28,3.14,1.86,1.10,'study-desk-table');collider(2.78,1.14,.82,.75,.61,'study-chair-seat');collider(2.78,1.45,.86,.14,1.52,'study-chair-back');
   interact('desk','打开书桌手记',desk,[2.45,1.1,.16]);
 
   function candle(owner,x,y,z,height=.31) {
@@ -523,7 +523,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   for(const x of [-.49,.49]){B(trunk,iron,x,.41,.448,.075,.66,.032);B(trunk,iron,x,.868,0,.075,.025,.81);}
   B(trunk,brass,0,.57,.465,.15,.19,.025);S(trunk,iron,0,.58,.485,.021,.033,.012);
   for(const x of [-.67,.67])for(const y of [.12,.65]){B(trunk,brass,x,y,.451,.1,.09,.02);S(trunk,iron,x,y,.468,.014,.014,.007);}
-  collider(-3.33,4.65,1.6,1.08);
+  collider(-3.33,4.65,1.6,1.08,.88,'travelling-trunk-platform');
   const armchair=group('Fireside reading armchair',root,[3.9,0,4.95],[0,-.42,0]);
   const greenLeather=standard({color:0x283d36,map:leatherGrain,roughness:.7});
   mesh(armchair,rounded(1.03,.24,.92,.065),walnut,[0,.39,0]);mesh(armchair,rounded(.91,.16,.82,.075),greenLeather,[0,.57,.035]);
@@ -531,7 +531,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   for(const x of [-.54,.54]){mesh(armchair,rounded(.16,.16,.96,.055),walnut,[x,.88,.02]);for(const z of [-.31,.33])B(armchair,walnut,x,.64,z,.07,.44,.07);}
   for(const x of [-.38,.38])for(const z of [-.31,.31])B(armchair,walnut,x,.18,z,.09,.35,.09);
   for(const x of [-.25,0,.25])for(const y of [.97,1.22])S(armchair,brass,x,y,-.221,.018,.018,.008);
-  collider(3.9,4.95,1.47,1.42);
+  collider(3.9,4.95,1.25,1.1,.66,'lounge-chair-seat');collider(4.06,4.57,1.0,.19,1.65,'lounge-chair-back');
 
   // Freestanding armillary sphere and telescope add scholarly, nautical cues.
   const armillary=group('Brass armillary',root,[-3.9,0,3.25]);
@@ -539,13 +539,13 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   C(armillary,walnut,0,.91,0,.43,.08);C(armillary,brass,0,1.13,0,.06,.38);
   for(const [rotation,r] of [[[0,0,.38],.49],[[Math.PI/2,0,0],.48],[[0,Math.PI/2,0],.48],[[.6,.8,.1],.44]])batch(armillary,ring,brass,[0,1.73,0],[r,r,r],rotation);
   S(armillary,oldGold,0,1.73,0,.18);beam(armillary,[-.19,1.15,0],[.19,2.3,0],.018,brass);
-  collider(-3.9,3.25,.86,.86);
+  collider(-3.9,3.25,.86,.86,2.3,'armillary');
   const telescope=group('Telescope',root,[4.63,0,-4.98],[0,.32,0]);
   for(let i=0;i<3;i++){const a=i*Math.PI*2/3;beam(telescope,[Math.cos(a)*.48,.03,Math.sin(a)*.48],[0,1.28,0],.035,brass);}
   const telescopeTube=group('Optical tube',telescope,[0,1.5,0],[Math.PI/2-.28,0,.2]);
   C(telescopeTube,brass,0,0,0,.1,1.12);C(telescopeTube,iron,0,.6,0,.105,.06);C(telescopeTube,oldGold,0,-.6,0,.06,.14);
   C(telescopeTube,basic({color:0x193449}),0,.636,0,.084,.008);
-  collider(4.63,-4.98,1,1);
+  collider(4.63,-4.98,1,1,2.12,'telescope');
 
   // Three small framed astronomical drawings break up blank stone surfaces.
   const charts=group('Charts and travelling memories',root,[3.48,0,-6.77]);
@@ -601,23 +601,76 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   batch(chandelier,ring,iron,[0,0,0],[1.19,1.19,1.19],[Math.PI/2,0,0]);
   for(let i=0;i<8;i++){const a=i*Math.PI/4,x=Math.cos(a)*1.18,z=Math.sin(a)*1.18;beam(chandelier,[0,.19,0],[x,-.07,z],.023,iron);candle(chandelier,x,-.07,z,.28);}
   S(chandelier,brass,0,.16,0,.1,.18,.1);
-  const keyLight=new THREE.PointLight(0xffcf91,92,19,2);keyLight.position.set(0,3.72,1.25);keyLight.castShadow=true;
+  const keyLight=new THREE.PointLight(0xffcf91,92,19,2);keyLight.position.set(0,3.72,1.25);keyLight.castShadow=!ultra;
   keyLight.shadow.mapSize.set(quality==='high'?2048:1024,quality==='high'?2048:1024);
   keyLight.shadow.camera.near=.25;keyLight.shadow.camera.far=20;keyLight.shadow.bias=-.00045;keyLight.shadow.normalBias=.035;keyLight.shadow.radius=3;
   // Furniture is static. Reuse its six-face shadow atlas after the first frame;
   // moving translucent flame/wing details deliberately cast no dynamic shadow.
   keyLight.shadow.autoUpdate=false;keyLight.shadow.needsUpdate=true;
-  root.add(keyLight);
+  if(ultra){for(const light of[hearthLight,deskLight,liftLight,keyLight]){light.intensity=0;light.visible=false;}}root.add(keyLight);
   const skyFill=new THREE.HemisphereLight(0x9fbad4,0x3e2e21,1.15);root.add(skyFill);
   const warmFill=new THREE.AmbientLight(0xd4bca1,.24);root.add(warmFill);
   const moon=new THREE.DirectionalLight(0xb6cce9,1.6);moon.position.set(7,6,-3);moon.target.position.set(-1,.4,.6);root.add(moon,moon.target);
 
+
+  // The western arcade is a walkable extension, not a skybox or teleport.
+  // Each landing is the same solid box submitted below and exposed to physics.
+  const arcade=group('Western arcade · movement and conversation');
+  B(arcade,darkWood,-15,-.14,0,18,.22,14.45);
+  for(let x=-23.5;x<-6;x+=1)for(let z=-6.5;z<7;z+=1)
+    B(arcade,oak,x,-.025,z,.98,.08,.98,[0,0,0],new THREE.Color().setScalar(.88+random()*.16));
+  for(const z of [-7.02,7.02]){
+    B(arcade,stone,-15,2.95,z,18.2,5.9,.3);
+    B(arcade,walnut,-15,.15,z<0?-6.79:6.79,18.1,.3,.18);
+    for(let x=-23;x<-6;x+=2){B(arcade,walnut,x,2.9,z<0?-6.78:6.78,.22,5.8,.24);B(arcade,woodEdge,x,5.7,z<0?-6.63:6.63,.46,.15,.36);}
+  }
+  for(const [z,d]of[[-1.575,11.15],[6.375,1.55]])B(arcade,stone,-24.05,2.95,z,.3,5.9,d);B(arcade,stone,-24.05,4.55,4.8,.3,2.9,1.6);
+  B(arcade,darkWood,-15,5.98,0,18.3,.2,14.3);
+  for(let x=-23;x<=-7;x+=2){beam(arcade,[x,5.73,-6.8],[x,5.73,6.8],.18,walnut,.25);}
+  // Broad floor lanes remain open around the staggered, ascending route.
+  const landings=[
+    ['platform-01',-8.2,-2.8,1.6,1.7,.5],['platform-02',-10.5,-2.8,1.65,1.7,1.0],
+    ['platform-03',-12.9,-2.6,1.7,1.8,1.5],['platform-04',-15.3,-2.0,1.8,1.8,2.0],
+    ['platform-05',-17.8,-1.2,1.9,1.9,2.5],['platform-06',-20.3,0,2.2,2.4,3.0],
+    ['platform-07',-20.2,3.5,2.4,2.1,2.5],['platform-08',-17.1,4.1,2.0,1.8,2.0],
+    ['platform-09',-14.2,4.0,2.0,1.8,1.5],['platform-10',-11.3,4.0,1.9,1.8,1.0],
+    ['platform-11',-8.5,4.0,1.8,1.8,.5]
+  ];
+  const landingPaint=standard({color:0x284943,roughness:.8});
+  for(const [id,x,z,w,d,top] of landings){
+    B(arcade,walnut,x,(top-.07)/2,z,w,top-.07,d);B(arcade,landingPaint,x,top-.035,z,w-.08,.07,d-.08);
+    for(const sign of [-1,1]){B(arcade,brass,x+sign*(w/2-.04),top+.007,z,.035,.014,d-.06);B(arcade,woodEdge,x+sign*(w/2-.08),top/2,z+d/2+.014,.08,Math.max(.16,top-.16),.025);}
+    collider(x,z,w,d,top,id);
+  }
+  // Low blocks teach a jump without forcing visitors onto the higher route.
+  for(const [id,x,z,top] of [['platform-warmup-01',-8.5,.45,.35],['platform-warmup-02',-11,.4,.65],['platform-warmup-03',-13.4,.6,.9]]){
+    B(arcade,stone,x,(top-.01)/2,z,1.35,top-.01,1.3);B(arcade,brass,x,top-.005,z,1.22,.01,1.17);collider(x,z,1.35,1.3,top,id);
+  }
+  // An upholstered bench and reading table are useful social landing surfaces.
+  B(arcade,walnut,-21.9,.3,-4.6,2.45,.6,.9);B(arcade,leather,-21.9,.64,-4.6,2.35,.12,.86);
+  collider(-21.9,-4.6,2.45,.9,.70,'arcade-bench-seat');
+  B(arcade,walnut,-18.9,1.03,-4.8,1.8,.14,1.1);
+  for(const dx of [-.7,.7])for(const dz of [-.38,.38])B(arcade,walnut,-18.9+dx,.48,-4.8+dz,.1,.96,.1);
+  collider(-18.9,-4.8,1.8,1.1,1.10,'arcade-reading-table');
+  // Opaque stone is the boundary; the eastern wall has a real 2m arcade opening.
+  collider(-24.05,-1.575,.3,11.15,Infinity,'arcade-west-wall-north');collider(-24.05,6.375,.3,1.55,Infinity,'arcade-west-wall-south');collider(-24.05,4.8,.3,1.6,Infinity,'classroom-door-lintel',3.1);
+  collider(-9,7.04,30.3,.3,Infinity,'south-wall');collider(-9,-7.04,30.3,.3,Infinity,'north-wall');
+  collider(-6.02,1.36,.5,11.68,Infinity,'arcade-divider-south');collider(-6.02,-6.735,.5,.83,Infinity,'arcade-divider-north');collider(-6.02,-5.4,.55,1.84,Infinity,'arcade-divider-lintel',3.94);
+  collider(6.02,-2.65,.28,8.9,Infinity,'east-wall-north');collider(6.02,5.2,.28,3.6,Infinity,'east-wall-south');collider(6.02,2.6,.3,1.6,Infinity,'cinema-door-lintel',3.05);
+  for(const z of [-6.43,-4.37])B(arcade,dressedStone,-6.01,2,z,.5,4,.22);
+  B(arcade,walnut,-6.01,4.05,-5.4,.55,.22,2.3);
+  // Soft, real fill light has no camera-facing translucent polygon.
+  const arcadeFill=new THREE.PointLight(0xffd9a5,ultra?0:48,22,2);arcadeFill.position.set(-15.5,4.8,0);arcadeFill.visible=!ultra;root.add(arcadeFill);
+  const arcadeCeiling=standard({color:0xf1c77e,emissive:0xe7a955,emissiveIntensity:.65,roughness:.6});
+  for(const x of [-9,-15,-21]){B(arcade,walnut,x,5.66,0,1.8,.16,.8);B(arcade,arcadeCeiling,x,5.56,0,1.6,.04,.65);}
+  // The classroom beyond this opening is a resident scene in world coordinates.
+
   // The cloud companion becomes a quiet, winged spirit. All motion is local.
-  const fairy=createBoyiFairy(THREE,animated,{reduced,colliders});
+  const fairy=createBoyiFairy(THREE,animated,{reduced:reduced||ultra,colliders,bounds:ROOM_BOUNDS.cottage,lightEnabled:!ultra});
   interactables.push(fairy.interactable);
 
   // A handful of motes, not a large particle simulation or full-screen effect.
-  const moteCount=quality==='high'?96:56,positions=new Float32Array(moteCount*3),moteBase=[];
+  const moteCount=ultra?0:quality==='high'?96:56,positions=new Float32Array(moteCount*3),moteBase=[];
   for(let i=0;i<moteCount;i++){const p=[range(-4.6,4.8),range(.4,4.8),range(-5.7,5.9)];moteBase.push(p);positions.set(p,i*3);}
   const moteGeometry=G(new THREE.BufferGeometry());moteGeometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
   const motes=new THREE.Points(moteGeometry,M(new THREE.PointsMaterial({color:0xd0b996,size:.014,transparent:true,opacity:.43,depthWrite:false,sizeAttenuation:true})));animated.add(motes);
@@ -641,18 +694,18 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   decals.clear();
   let triangleEstimate=0,meshCount=0,drawEstimate=0;
   root.traverse(object=>{if(object.isMesh){const g=object.geometry;const count=(g.index?g.index.count:g.attributes.position.count)/3;triangleEstimate+=count*(object.isInstancedMesh?object.count:1);meshCount++;drawEstimate+=Array.isArray(object.material)?object.material.length:1;}});
-  const stats={sceneKind:'private-cottage',geometryTriangles:Math.round(triangleEstimate),meshObjects:meshCount,staticInstances:instances,staticInstanceDraws:instanceDraws,estimatedMainPassDrawCalls:drawEstimate+1,shadowLights:1,interactions:interactables.length,seed:'42b09e31',rendererMeasured:false,originalLogoCount};
+  const stats={sceneKind:'private-cottage',geometryTriangles:Math.round(triangleEstimate),meshObjects:meshCount,staticInstances:instances,staticInstanceDraws:instanceDraws,estimatedMainPassDrawCalls:drawEstimate+1,shadowLights:ultra?0:1,platformCount:landings.length+3,walkableArea:420,moonShaftPlanes:0,interactions:interactables.length,seed:'42b09e31',rendererMeasured:false,originalLogoCount};
   Object.defineProperties(stats,{spriteFollowing:{enumerable:true,get:()=>fairy.stats.spriteFollowing},spriteGestureCount:{enumerable:true,get:()=>fairy.stats.spriteGestureCount}});
   let elapsed=0,fireEnabled=true,nightEnabled=true;
   return {
-    root,colliders,interactables,elevator,setElevatorState,spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
+    root,origin:ROOM_ORIGINS.cottage,bounds:ROOM_BOUNDS.cottage,connection:ROOM_CONNECTIONS.cottage,connections:ROOM_PORTALS.cottage,colliders,interactables,elevator,setElevatorState,setCompanionActive(active){fairy.setActive(active);root.traverse(o=>{if(o.isHemisphereLight||o.isAmbientLight||o.isDirectionalLight)o.visible=Boolean(active);});},spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
     setViewerPose(pose={}){fairy.setViewerPose(pose);},
     setSpriteState(state='idle'){fairy.setSpriteState(state);},
     setFireEnabled(enabled=true) {
       fireEnabled=Boolean(enabled);
       hearthFlames.forEach(object=>{object.visible=fireEnabled;});
       embers.forEach(({material,intensity})=>{material.emissiveIntensity=fireEnabled?intensity:0;});
-      hearthLight.intensity=fireEnabled?34:0;
+      hearthLight.intensity=!ultra&&fireEnabled?34:0;
     },
     setNightMode(enabled=true) {
       nightEnabled=Boolean(enabled);nightMat.map=nightEnabled?nightTexture:dayTexture;nightMat.color.setHex(nightEnabled?0xb5c6e6:0xe2dfcf);nightMat.needsUpdate=true;
@@ -665,7 +718,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
       elapsed=Number.isFinite(seconds)?seconds:elapsed+Math.min(dt,.05);
       const t=elapsed;
       fairy.update(t,dt);
-      if(!reduced) {
+      if(!reduced&&!ultra) {
         for(const flicker of flickers) {
           flicker.object.scale.y=flicker.scale*(1+Math.sin(t*7.3+flicker.phase)*.08+Math.sin(t*11.1+flicker.phase)*.035);
         }
@@ -687,9 +740,9 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
 
 
 /** Shared, locally modelled Boyi fairy used by both the public lobby and study. */
-export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={}) {
+export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[],bounds={minX:-5.3,maxX:5.3,minZ:-6.15,maxZ:6.15},lightEnabled=true }={}) {
   const root=parent,animated=parent,geometries=new Set(),materials=new Set(),batches=new Map(),interactables=[];
-  let seed=0x79b01a19,disposed=false;const random=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return(seed>>>0)/4294967296;},range=(a,b)=>a+(b-a)*random();
+  let seed=0x79b01a19,disposed=false,active=true;const random=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return(seed>>>0)/4294967296;},range=(a,b)=>a+(b-a)*random();
   const G=g=>(geometries.add(g),g),M=m=>(materials.add(m),m),standard=o=>M(new THREE.MeshStandardMaterial(o)),basic=o=>M(new THREE.MeshBasicMaterial(o));
   const sphere=G(new THREE.SphereGeometry(1,24,16)),smallSphere=G(new THREE.SphereGeometry(1,12,8)),box=G(new THREE.BoxGeometry(1,1,1)),ring=G(new THREE.TorusGeometry(1,.055,8,48)),temp=new THREE.Object3D();
   const oldGold=standard({color:0xb89b61,metalness:.65,roughness:.47});
@@ -736,7 +789,7 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
     }
   }
   batch(sprite,ring,oldGold,[0,.8,-.02],[.43,.43,.43],[Math.PI/2+.12,0,0]);
-  const fairyLight=new THREE.PointLight(0x83d7d6,.65,2.8,2);fairyLight.position.set(-1.65,1.86,-.65);root.add(fairyLight);
+  const fairyLight=new THREE.PointLight(0x83d7d6,.65,2.8,2);fairyLight.position.set(-1.65,1.86,-.65);fairyLight.visible=lightEnabled;root.add(fairyLight);
   const spiritMotes=[];
   for(let i=0;i<6;i++) {const a=i*Math.PI/3;const mote=mesh(sprite,smallSphere,cyan,[Math.cos(a)*.6,-.44+Math.sin(a)*.08,Math.sin(a)*.5],[.012,.012,.012]);mote.castShadow=false;spiritMotes.push(mote);}
   const spiritTablet=group('Spirit reading tablet',sprite,[0,-.3,.36],[.18,0,0]);
@@ -760,14 +813,14 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
     const sin=Math.sin(viewer.yaw),cos=Math.cos(viewer.yaw);
     const forward=spiritState==='idle'?1.65:1.6,baseRight=spiritState==='idle'?.95:1.0;
     const right=viewer.aspect<.85?Math.min(baseRight,forward*Math.tan(34*Math.PI/180)*viewer.aspect*.48):baseRight;
-    desired.set(viewer.x+cos*right-sin*forward,clamp(viewer.y-.13,1.2,2.3),viewer.z-sin*right-cos*forward);
-    desired.x=clamp(desired.x,-5.18,5.18);desired.z=clamp(desired.z,-6.1,6.1);
+    desired.set(viewer.x+cos*right-sin*forward,clamp(viewer.y-.13,1.2,4.5),viewer.z-sin*right-cos*forward);
+    desired.x=clamp(desired.x,bounds.minX+.25,bounds.maxX-.25);desired.z=clamp(desired.z,bounds.minZ+.25,bounds.maxZ-.25);
     // Keep the little spirit in front of solid shelves and furniture. Testing
     // a small radius is sufficient: its wings remain visibly translucent.
     for(const c of colliders){
       const margin=.28;
-      if(desired.x>c.minX-margin&&desired.x<c.maxX+margin&&desired.z>c.minZ-margin&&desired.z<c.maxZ+margin){
-        const exits=[{distance:Math.abs(desired.x-c.minX+margin),x:c.minX-margin,z:desired.z},{distance:Math.abs(c.maxX+margin-desired.x),x:c.maxX+margin,z:desired.z},{distance:Math.abs(desired.z-c.minZ+margin),x:desired.x,z:c.minZ-margin},{distance:Math.abs(c.maxZ+margin-desired.z),x:desired.x,z:c.maxZ+margin}].filter(p=>Math.abs(p.x)<5.19&&Math.abs(p.z)<6.11);
+      if(desired.y+.3>(c.minY??0)&&desired.y-.3<(c.maxY??Infinity)&&desired.x>c.minX-margin&&desired.x<c.maxX+margin&&desired.z>c.minZ-margin&&desired.z<c.maxZ+margin){
+        const exits=[{distance:Math.abs(desired.x-c.minX+margin),x:c.minX-margin,z:desired.z},{distance:Math.abs(c.maxX+margin-desired.x),x:c.maxX+margin,z:desired.z},{distance:Math.abs(desired.z-c.minZ+margin),x:desired.x,z:c.minZ-margin},{distance:Math.abs(c.maxZ+margin-desired.z),x:desired.x,z:c.maxZ+margin}].filter(p=>p.x>bounds.minX+.15&&p.x<bounds.maxX-.15&&p.z>bounds.minZ+.15&&p.z<bounds.maxZ-.15);
         exits.sort((a,b)=>a.distance-b.distance);if(exits[0]){desired.x=exits[0].x;desired.z=exits[0].z;}
       }
     }
@@ -800,7 +853,7 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
       }
     }else if(gesture){gesture=null;nextGesture=t+8+random()*8;}
     sprite.position.copy(followBase).add(offset);
-    sprite.position.x=clamp(sprite.position.x,-5.3,5.3);sprite.position.z=clamp(sprite.position.z,-6.15,6.15);
+    sprite.position.x=clamp(sprite.position.x,bounds.minX+.1,bounds.maxX-.1);sprite.position.z=clamp(sprite.position.z,bounds.minZ+.1,bounds.maxZ-.1);
     if(viewerSeen){const angle=Math.atan2(viewer.x-sprite.position.x,viewer.z-sprite.position.z),difference=Math.atan2(Math.sin(angle-sprite.rotation.y),Math.cos(angle-sprite.rotation.y));sprite.rotation.y+=difference*(1-Math.exp(-delta*5));}
     sprite.rotation.z=roll;spiritHead.rotation.x+=nod;
     spriteInteraction.point.copy(sprite.position);spriteInteraction.point.y+=.12*sprite.scale.y;
@@ -825,7 +878,7 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
     else if(state==='nod')spiritHead.rotation.x=reduced?.08:Math.sin(Math.min(localTime,2)*6)*.1*Math.max(0,1-localTime/2);
   };
 
-  return {root:sprite,interactable:spriteInteraction,stats,
+  return {root:sprite,interactable:spriteInteraction,stats,setActive(value){active=Boolean(value);sprite.visible=active;fairyLight.visible=active&&lightEnabled;},
     setViewerPose(pose={}) {
       if(disposed||![pose.x,pose.y,pose.z,pose.yaw].every(Number.isFinite))return;
       Object.assign(viewer,{x:pose.x,y:pose.y,z:pose.z,yaw:pose.yaw,pitch:Number.isFinite(pose.pitch)?pose.pitch:0,aspect:Number.isFinite(pose.aspect)&&pose.aspect>0?clamp(pose.aspect,.2,4):viewer.aspect});
@@ -839,7 +892,7 @@ export function createBoyiFairy(THREE, parent, { reduced=false, colliders=[] }={
       if(spiritState!=='idle'){gesture=null;sprite.rotation.z=0;nextGesture=elapsed+8+random()*8;}
     },
 
-    update(seconds,dt=0){if(disposed)return;elapsed=Number.isFinite(seconds)?seconds:elapsed+Math.min(dt,.05);const t=elapsed;applySpiritPose(spiritState,t-stateStarted);updateFollowing(dt,t);if(!reduced){for(const {object,side} of wings)object.rotation.z=side*(-.18+Math.sin(t*1.25)*.055);for(let i=0;i<spiritMotes.length;i++){const angle=i*Math.PI/3+(spiritState==='think'?t*.9:t*.16);spiritMotes[i].position.set(Math.cos(angle)*.6,spiritState==='think'?.44+Math.sin(angle*2)*.07:-.44+Math.sin(angle)*.08,Math.sin(angle)*.5);}}},
+    update(seconds,dt=0){if(disposed||!active)return;elapsed=Number.isFinite(seconds)?seconds:elapsed+Math.min(dt,.05);const t=elapsed;applySpiritPose(spiritState,t-stateStarted);updateFollowing(dt,t);if(!reduced){for(const {object,side} of wings)object.rotation.z=side*(-.18+Math.sin(t*1.25)*.055);for(let i=0;i<spiritMotes.length;i++){const angle=i*Math.PI/3+(spiritState==='think'?t*.9:t*.16);spiritMotes[i].position.set(Math.cos(angle)*.6,spiritState==='think'?.44+Math.sin(angle*2)*.07:-.44+Math.sin(angle)*.08,Math.sin(angle)*.5);}}},
     dispose(){if(disposed)return;disposed=true;sprite.removeFromParent();fairyLight.removeFromParent();sprite.traverse(o=>{if(o.isInstancedMesh)o.dispose();});for(const g of geometries)g.dispose();for(const m of materials)m.dispose();}
   };
 }

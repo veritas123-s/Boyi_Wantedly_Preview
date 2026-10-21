@@ -1,4 +1,4 @@
-const root=new URL('.',import.meta.url),version='2026-10-20.1';
+const root=new URL('.',import.meta.url),version='2026-10-21.1';
 let knowledgePromise;
 const normal=s=>s.normalize('NFKC').toLowerCase().replace(/[\s\p{P}]/gu,'');
 async function knowledge(){return knowledgePromise??=fetch(new URL('guide-knowledge.json?v='+version,root)).then(r=>{if(!r.ok)throw Error('知识资料暂时无法加载');return r.json();}).catch(e=>{knowledgePromise=null;throw e;});}
