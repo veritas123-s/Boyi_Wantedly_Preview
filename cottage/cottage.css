@@ -63,3 +63,24 @@ body.cinema-viewing #room-notice{display:none}
 .classroom-reading .social-tools{top:auto;right:auto;left:18px;bottom:28px}
 .classroom-reading .action-tools{right:18px;bottom:84px;flex-direction:row;flex-wrap:wrap;max-width:calc(100vw - 36px);justify-content:flex-end}
 .classroom-reading #room-notice{bottom:142px}
+
+/* Classroom touch HUD: distinct rows in portrait, two bands between thumb pads in landscape. */
+@media(max-width:900px){
+ .classroom-reading .room-bottom{left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));transform:none;max-width:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;white-space:normal}
+ .classroom-reading .room-bottom button{min-width:0;min-height:44px;width:100%;padding:8px 6px;font-size:11px}
+ .classroom-reading .social-tools{left:12px;right:12px;top:auto;bottom:64px;max-width:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .classroom-reading .social-tools button{min-width:0;min-height:44px;padding:8px 7px;font-size:11px}
+ .classroom-reading .action-tools{left:12px;right:12px;bottom:118px;max-width:none;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+ .classroom-reading .action-tools button{min-width:44px;min-height:44px;padding:8px 9px;font-size:11px}
+ .classroom-reading #joystick{left:12px;bottom:176px;width:82px;height:82px}
+ .classroom-reading #mobile-interact{right:12px;bottom:176px;width:82px;height:82px;visibility:visible;pointer-events:auto}
+ .classroom-reading #room-notice{bottom:264px;pointer-events:none}
+}
+@media(max-width:900px) and (max-height:500px){
+ .classroom-reading .room-bottom{left:108px;right:108px;bottom:max(10px,env(safe-area-inset-bottom))}
+ .classroom-reading .social-tools{left:108px;right:auto;bottom:62px;width:236px;display:flex;flex-wrap:wrap;justify-content:flex-start}
+ .classroom-reading .action-tools{left:360px;right:108px;bottom:62px;max-width:none}
+ .classroom-reading #joystick{left:12px;bottom:max(10px,env(safe-area-inset-bottom))}
+ .classroom-reading #mobile-interact{right:12px;bottom:max(10px,env(safe-area-inset-bottom))}
+ .classroom-reading #room-notice{bottom:116px}
+}

@@ -12,8 +12,9 @@ const basicFields={name:'姓名',school:'学校或单位',major:'专业',grade:'
 const moreFields={bio:'简单介绍',interests:'兴趣方向',skills:'技能',languages:'语言',publicContact:'联系方式（选填）'};
 const editorBasic=['name','englishName','school','major','grade','className'],editorMore=['bio','interests','publicContact'];
 let registrationStep=0;
-let me=null,csrf='',config=null,avatar='',busy=false,dirty=false,lastUsername='',restoreProfileInputs=null;
-let securityEpoch=0,profileSequence=0,directoryEpoch=0;
+let me=null,csrf='',config=null,avatar='',busy=false,dirty=false,lastUsername='',restoreProfileInputs=null,cancelCurrentAction=null;
+let securityEpoch=0,profileSequence=0,directoryEpoch=0,accountEpoch=0,managementEpoch=0;
+let accountReady=false,accountSetupRunning=false,accountHandlersReady=false;
 const privateProfiles=new Map();
 const profilePrefixes=new WeakMap();
 function clearPrivateState(){
@@ -21,8 +22,13 @@ function clearPrivateState(){
  for(const id of ['member-private-list','member-private-view']){const node=document.getElementById(id);if(node)node.replaceChildren();}
  const view=document.getElementById('member-private-view');if(view)view.hidden=true;
 }
+function clearManagementState(){
+ managementEpoch++;
+ for(const id of ['member-manage-people','member-manage-claims']){const node=document.getElementById(id);if(node)node.replaceChildren();}
+ document.querySelectorAll('.member-review-status').forEach(node=>node.remove());
+}
 function clearAccountState(){
- securityEpoch++;clearPrivateState();
+ accountEpoch++;securityEpoch++;clearPrivateState();clearManagementState();cancelCurrentAction?.();
  for(const id of ['member-recovery','member-private-list','member-private-view','member-manage-people','member-manage-claims','member-preview','member-candidates','member-onboarding-actions','member-basic-fields','member-more-fields','member-identity-facts','portal-security']){const node=document.getElementById(id);if(node)node.replaceChildren();}
  for(const id of ['member-recovery','member-private-view','member-preview','portal-security','member-management','member-private-management']){const node=document.getElementById(id);if(node)node.hidden=true;}
  const root=document.getElementById('member-account-content');
@@ -53,16 +59,22 @@ async function refreshSecurity(){
 }
 function safeProfileUrl(value){try{const url=new URL(value,site);return ['https:','http:'].includes(url.protocol)?url.href:null;}catch{return null;}}
 const $=(selector,root=document)=>root.querySelector(selector),$$=(selector,root=document)=>[...root.querySelectorAll(selector)];
+document.addEventListener('submit',event=>{
+ if(!event.target.matches('#member-account-content form'))return;
+ event.preventDefault();
+ if(!accountReady){event.stopImmediatePropagation();message('账号服务尚未连接，请稍候或重新连接。',{scroll:false});}
+},true);
 function el(tag,text,className){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(className)n.className=className;return n;}
 function button(label,action,secondary=true){const b=el('button',label,'member-button'+(secondary?' secondary':''));b.type='button';b.addEventListener('click',action);return b;}
 function link(label,url,secondary=true){const a=el('a',label,'member-button'+(secondary?' secondary':''));a.href=url;return a;}
 function message(value,{scroll=true}={}){const n=$('#member-message');if(n){n.textContent=value;if(scroll&&value)n.scrollIntoView({block:'nearest',behavior:'smooth'});}}
 async function call(route,method='GET',body){
- const privateRead=method==='GET'&&(route==='/api/manage/profile-directory'||route.startsWith('/api/manage/profiles/')),epoch=directoryEpoch,accountId=me?.user?.id;
+ const protectedRoute=/^\/api\/(?:manage\/|me(?:\/|$)|logout$)/.test(route),session=accountEpoch,accountId=me?.user?.id;
  const response=await fetch(api+route,{method,credentials:'include',headers:{...(body?{'Content-Type':'application/json'}:{}),...(method!=='GET'&&csrf?{'X-Boyi-CSRF':csrf}:{})},...(body?{body:JSON.stringify(body)}:{})});
- if(privateRead&&[401,403].includes(response.status)){
+ if(protectedRoute&&(session!==accountEpoch||me?.user?.id!==accountId)){const error=Error('这次操作所属的登录状态已结束。');error.stale=true;throw error;}
+ if(route.startsWith('/api/manage/')&&[401,403].includes(response.status)){
   const note=response.status===401?'登录已失效，请重新登录。':'当前账号没有查看成员资料的权限。';
-  if(epoch===directoryEpoch&&me?.user?.id===accountId){clearPrivateState();if(response.status===401)showAuth('login');message(note,{scroll:false});}
+  clearPrivateState();clearManagementState();if(response.status===401)showAuth('login');message(note,{scroll:false});
   const error=Error(note);error.status=response.status;throw error;
  }
  let data;try{data=await response.json();}catch{throw Error('暂时连接不上账号服务，请稍后重试。');}if(!response.ok){const e=Error(data.error||'操作没有完成，请重试。');e.status=response.status;throw e;}return data;
@@ -72,7 +84,12 @@ function lockProfileInputs(){
  const inputs=$$('#member-profile-form input, #member-profile-form textarea, #member-profile-form select'),previous=inputs.map(n=>n.disabled);
  inputs.forEach(n=>n.disabled=true);restoreProfileInputs=()=>inputs.forEach((n,i)=>n.disabled=previous[i]);
 }
-async function action(fn,{scroll=true}={}){if(busy)return;busy=true;const buttons=$$('.member-main button');const previous=buttons.map(b=>b.disabled);buttons.forEach(b=>b.disabled=true);try{await fn();}catch(e){message(e.message||'暂时无法完成，请稍后重试。',{scroll});}finally{restoreProfileInputs?.();restoreProfileInputs=null;busy=false;buttons.forEach((b,i)=>b.disabled=previous[i]);}}
+async function action(fn,{scroll=true}={}){
+ if(busy)return;busy=true;const session=accountEpoch,buttons=$$('.member-main button'),previous=buttons.map(b=>b.disabled);let finished=false;
+ buttons.forEach(b=>b.disabled=true);
+ const finish=()=>{if(finished)return;finished=true;restoreProfileInputs?.();restoreProfileInputs=null;buttons.forEach((b,i)=>b.disabled=previous[i]);busy=false;if(cancelCurrentAction===finish)cancelCurrentAction=null;};cancelCurrentAction=finish;
+ try{await fn();}catch(e){if(session===accountEpoch&&!e.stale)message(e.message||'暂时无法完成，请稍后重试。',{scroll});}finally{finish();}
+}
 function profileUrl(id){return new URL('people/?id='+encodeURIComponent(id),site).href;}
 function imageUrl(id){return api+'/api/images/'+id;}
 function legacyAvatarUrl(value){
@@ -201,7 +218,7 @@ function recoveryBox(code){const box=$('#member-recovery');box.replaceChildren(e
 function showAuth(tab='login'){clearAccountState();$('#member-auth').hidden=false;$('#member-dashboard').hidden=true;if(tab==='register')registerStep(0);for(const t of ['login','register','recover']){$('#'+t+'-form').hidden=t!==tab;const b=$('[data-auth-tab="'+t+'"]');if(b)b.setAttribute('aria-selected',String(t===tab));}message('');document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:false}}));}
 function showDashboard(data){
  const changedUser=!!me&&me.user.id!==data.user.id,registrationUsername=lastUsername;
- if(changedUser){clearAccountState();if(data.recoveryCode)lastUsername=registrationUsername;}
+ if(changedUser){clearAccountState();if(data.recoveryCode)lastUsername=registrationUsername;}else if(!me){accountEpoch++;managementEpoch++;}
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
  $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
  if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
@@ -214,21 +231,25 @@ function showDashboard(data){
  document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:true}}));
 }
 async function management(){
- const data=await call('/api/manage/pending'),members=$('#member-manage-people'),claims=$('#member-manage-claims');members.replaceChildren();claims.replaceChildren();
+ const epoch=++managementEpoch,session=accountEpoch,accountId=me?.user?.id,current=()=>epoch===managementEpoch&&session===accountEpoch&&me?.user?.id===accountId,sessionCurrent=()=>session===accountEpoch&&me?.user?.id===accountId;
+ let data;try{data=await call('/api/manage/pending');}catch(error){if(!current()||error.stale)return false;throw error;}if(!current())return false;
+ const members=$('#member-manage-people'),claims=$('#member-manage-claims');members.replaceChildren();claims.replaceChildren();
  const groups={};for(const [key,label]of [['pending','待确认'],['verified','已确认']]){const group=el('section',undefined,'member-review-group');group.dataset.reviewGroup=key;group.append(el('h4',label+'（'+data.members.filter(u=>(u.identityStatus==='verified'?'verified':'pending')===key).length+'）'));const list=el('div');group.append(list);members.append(group);groups[key]=list;}
  const localStatus=el('p','','member-review-status');localStatus.setAttribute('role','status');members.before(localStatus);const oldStatus=$$('.member-review-status');oldStatus.slice(0,-1).forEach(n=>n.remove());
  if(!data.members.length)members.append(el('p','目前没有需要你核对的成员。','member-help'));
  for(const u of data.members){const box=el('article',undefined,'member-manage-item');box.append(el('h3',u.name),el('p',identityText(u)+(u.adminGroup?' · 行政'+u.adminGroup+'组':'')+(u.disabled?' · 已停用':''),'member-help'));const actions=el('div',undefined,'member-actions');const verification=el('label',undefined,'member-check'),toggle=el('input');toggle.type='checkbox';toggle.checked=u.canVerify;verification.append(toggle,el('span','允许协助核对本行政组学生'));if(u.requestedRole==='committee')box.append(verification);
-  const update=type=>action(async()=>{const scrollPosition=window.scrollY;if(['disable','revoke'].includes(type)&&!confirm(type==='disable'?'停用后，该账号不能登录，公开主页也会隐藏。确认停用？':'确认撤销这个账号已核对的身份与管理权限？'))return;await call('/api/manage/members/'+u.id,'POST',{action:type,canVerify:toggle.checked});await management();const status=$('.member-review-status');if(status)status.textContent=u.name+'：成员状态已更新';requestAnimationFrame(()=>window.scrollTo({top:scrollPosition,behavior:'instant'}));},{scroll:false});
+  const update=type=>action(async()=>{if(!current())return;const scrollPosition=window.scrollY;if(['disable','revoke'].includes(type)&&!confirm(type==='disable'?'停用后，该账号不能登录，公开主页也会隐藏。确认停用？':'确认撤销这个账号已核对的身份与管理权限？'))return;await call('/api/manage/members/'+u.id,'POST',{action:type,canVerify:toggle.checked});if(!current()||!await management()||!sessionCurrent())return;const status=$('.member-review-status');if(status)status.textContent=u.name+'：成员状态已更新';requestAnimationFrame(()=>{if(sessionCurrent())window.scrollTo({top:scrollPosition,behavior:'instant'});});},{scroll:false});
   actions.append(button(u.identityStatus==='verified'?'重新确认身份':'确认身份',()=>update('approve')),button('撤销身份确认',()=>update('revoke')),button(u.disabled?'恢复账号':'停用账号',()=>update(u.disabled?'enable':'disable')));box.dataset.memberId=u.id;box.append(actions);groups[u.identityStatus==='verified'?'verified':'pending'].append(box);
  }
  if(!data.claims.length)claims.append(el('p','目前没有待核对的主页认领。','member-help'));
- for(const c of data.claims){const box=el('article',undefined,'member-manage-item');box.append(el('h3',c.name),el('p','申请认领五期已有主页 · '+c.rosterId,'member-help'));const actions=el('div',undefined,'member-actions');for(const yes of [true,false])actions.append(button(yes?'确认认领':'暂不通过',()=>action(async()=>{const scrollPosition=window.scrollY;await call('/api/manage/claims/'+c.id,'POST',{approve:yes});await management();const status=$('.member-review-status');if(status)status.textContent=c.name+'：认领申请已处理';requestAnimationFrame(()=>window.scrollTo({top:scrollPosition,behavior:'instant'}));},{scroll:false})));box.append(actions);claims.append(box);}
+ for(const c of data.claims){const box=el('article',undefined,'member-manage-item');box.append(el('h3',c.name),el('p','申请认领五期已有主页 · '+c.rosterId,'member-help'));const actions=el('div',undefined,'member-actions');for(const yes of [true,false])actions.append(button(yes?'确认认领':'暂不通过',()=>action(async()=>{if(!current())return;const scrollPosition=window.scrollY;await call('/api/manage/claims/'+c.id,'POST',{approve:yes});if(!current()||!await management()||!sessionCurrent())return;const status=$('.member-review-status');if(status)status.textContent=c.name+'：认领申请已处理';requestAnimationFrame(()=>{if(sessionCurrent())window.scrollTo({top:scrollPosition,behavior:'instant'});});},{scroll:false})));box.append(actions);claims.append(box);}
+ return true;
 }
 async function setupAccount(){
  if(!local&&location.origin!==origin){$('#member-account-content').replaceChildren(el('h1','登录博医云'),el('p','账号与个人资料保存在腾讯云。请从下面的入口注册、登录和维护主页。'),link('前往账号中心',account,false));return;}
- if(local){const note=el('aside',undefined,'member-panel');note.setAttribute('aria-label','预览账号说明');note.append(el('p','这是本地预览，正式网站账号请从正式入口登录。'),link('打开正式登录页 ↗','https://122.51.44.155/boyi-preview/account/'));$('#member-account-content').prepend(note);}
- config=await call('/api/config');const cohorts=$('#register-cohort');for(const n of config.cohorts){const option=el('option','博医'+n+'期');option.value=n;option.selected=n===5;cohorts.append(option);}
+ if(local&&!$('#member-preview-account-note')){const note=el('aside',undefined,'member-panel');note.id='member-preview-account-note';note.setAttribute('aria-label','预览账号说明');note.append(el('p','这是本地预览，正式网站账号请从正式入口登录。'),link('打开正式登录页 ↗','https://122.51.44.155/boyi-preview/account/'));$('#member-account-content').prepend(note);}
+ config=await call('/api/config');const cohorts=$('#register-cohort');cohorts.replaceChildren();for(const n of config.cohorts){const option=el('option','博医'+n+'期');option.value=n;option.selected=n===5;cohorts.append(option);}
+ if(!accountHandlersReady){
  $$('[data-auth-tab]').forEach(b=>b.addEventListener('click',()=>showAuth(b.dataset.authTab)));
  $('#member-forgot').addEventListener('click',()=>showAuth('recover'));
  const register=$('#register-form');register.addEventListener('change',()=>{$('#register-cohort').required=register.elements.role.value!=='foundation';});$('#register-back').addEventListener('click',()=>registerStep(Math.max(0,registrationStep-1)));
@@ -246,8 +267,16 @@ async function setupAccount(){
  $('#member-password-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{const d=new FormData(e.target);await call('/api/me/password','POST',{oldPassword:d.get('oldPassword'),newPassword:d.get('newPassword')});e.target.reset();me=null;csrf='';dirty=false;showAuth('login');message('密码已修改，请重新登录。');});});
  $('#member-avatar-file').addEventListener('change',e=>action(async()=>{const file=e.target.files[0];if(!file)return;if(file.size>15000000)throw Error('请选择15MB以内的照片。');const bitmap=await createImageBitmap(file);const scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const data=canvas.toDataURL('image/jpeg',.85).split(',')[1],result=await call('/api/me/avatar','POST',{data});avatar=result.id;const img=$('#member-avatar-preview');profileAvatar(img,avatar,me.legacyAvatarSrc);const currentPortrait=$('#member-current-portrait');if(currentPortrait)profileAvatar(currentPortrait,avatar,me.legacyAvatarSrc);dirty=true;message('头像已上传，请保存草稿；公开版本暂未改变。');}));
  addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+ accountHandlersReady=true;
+ }
  try{showDashboard(testLogin?await call('/api/test-admin/login','POST',{token:testLogin}):await call('/api/me'));if(testLogin)message('Admin 免密码登录成功，可以测试成员核对与内部资料查看。');returnToCottage();}catch(e){if(e.status===401)showAuth('login');else throw e;}
- $$('[data-auth-tab]').forEach(b=>b.disabled=false);$('#member-auth').dataset.ready='true';
+}
+function accountSubmissionReady(ready){accountReady=ready;$$('#member-account-content form button[type="submit"], [data-auth-tab]').forEach(button=>button.disabled=!ready);const auth=$('#member-auth');if(auth)auth.dataset.ready=String(ready);}
+async function initializeAccount(){
+ if(accountSetupRunning)return;accountSetupRunning=true;accountSubmissionReady(false);message('正在连接账号服务……',{scroll:false});
+ try{await setupAccount();accountSubmissionReady(true);}
+ catch(error){showAuth('login');accountSubmissionReady(false);message('账号服务暂时不可用，请重新连接。',{scroll:false});const retry=button('重新连接',()=>{void initializeAccount();});retry.id='member-init-retry';$('#member-message').append(' ',retry);}
+ finally{accountSetupRunning=false;}
 }
 async function directory(host){const query=new URLSearchParams();const form=$('#member-directory-form');if(form){const d=new FormData(form);if(d.get('cohort'))query.set('cohort',d.get('cohort'));if(d.get('q'))query.set('q',d.get('q'));}const data=await call('/api/public/profiles?'+query);host.replaceChildren();if(!data.items.length){host.append(el('p','这里会展示成员本人确认公开的主页。','member-help'));return;}for(const item of data.items){const a=el('a',undefined,'member-person');a.href=profileUrl(item.id);if(item.rosterId)a.dataset.publicRosterId=item.rosterId;if(item.profile.avatar){const img=el('img');img.src=imageUrl(item.profile.avatar);img.alt='';img.loading='lazy';a.append(img);}a.append(el('span',(item.cohort?'博医'+item.cohort+'期 · ':'')+item.role,'member-help'),el('h3',item.profile.name));if(item.profile.headline||item.profile.major)a.append(el('p',item.profile.headline||item.profile.major));host.append(a);}document.dispatchEvent(new CustomEvent('boyi:public-profile-rendered'));}
 async function publicPage(){const host=$('#member-public-profile'),id=new URLSearchParams(location.search).get('id');if(id){const data=await call('/api/public/profiles/'+encodeURIComponent(id));$('#member-profile-heading').hidden=true;renderProfile(host,data.item);document.title=data.item.profile.name+' | 博医云';$('#member-profile-heading').setAttribute('aria-label',data.item.profile.name);$('#member-directory-area').hidden=true;}else{$('#member-profile-heading').textContent='成员主页';const form=$('#member-directory-form');form.addEventListener('submit',e=>{e.preventDefault();action(()=>directory($('#member-directory')));});await directory($('#member-directory'));}}
@@ -274,7 +303,7 @@ async function legacyProfile(){
 }
 async function init(){
  const header=$('.w-header'),menu=$('.w-menu',header||document);if(header&&menu){const a=el('a','我的主页','boyi-account-entry');a.href=account;header.insertBefore(a,menu);}
- if($('#member-account-content')){try{await setupAccount();}catch(e){message(e.message||'暂时无法连接账号服务。');}return;}
+ if($('#member-account-content')){await initializeAccount();return;}
  if($('#member-public-profile')){try{await publicPage();}catch(e){message(e.message);$('#member-public-profile').replaceChildren(el('p','这个主页暂未公开，或账号服务暂时不可用。'));}return;}
  if($('main[data-student-id]'))void legacyProfile();
  if(location.pathname.endsWith('/window/students/')){const main=$('main');if(main){const section=el('section',undefined,'member-directory-slot');section.append(el('h2','成员自己维护的主页'),link('查看所有成员主页',new URL('people/',site).href),link('注册 / 维护我的主页',account));const list=el('div',undefined,'member-directory');section.append(list);main.append(section);directory(list).catch(()=>list.append(el('p','账号服务暂时不可用，请稍后查看。','member-help')));}}
