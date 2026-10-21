@@ -77,7 +77,9 @@ async function call(route,method='GET',body){
   clearPrivateState();clearManagementState();if(response.status===401)showAuth('login');message(note,{scroll:false});
   const error=Error(note);error.status=response.status;throw error;
  }
- let data;try{data=await response.json();}catch{throw Error('暂时连接不上账号服务，请稍后重试。');}if(!response.ok){const e=Error(data.error||'操作没有完成，请重试。');e.status=response.status;throw e;}return data;
+ let data;try{data=await response.json();}catch{throw Error('暂时连接不上账号服务，请稍后重试。');}
+ if(protectedRoute&&(session!==accountEpoch||me?.user?.id!==accountId)){const error=Error('这次操作所属的登录状态已结束。');error.stale=true;throw error;}
+ if(!response.ok){const e=Error(data.error||'操作没有完成，请重试。');e.status=response.status;throw e;}return data;
 }
 function lockProfileInputs(){
  if(restoreProfileInputs)return;
