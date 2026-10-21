@@ -267,7 +267,16 @@ async function setupAccount(){
  $('#member-claim-button').addEventListener('click',()=>action(async()=>{await call('/api/me/claim','POST',{rosterId:$('#member-claim-id').value});const data=await call('/api/me');showDashboard(data);message('认领申请已提交。');}));
  $('#member-manage-refresh').addEventListener('click',()=>action(management));
  $('#member-password-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{const d=new FormData(e.target);await call('/api/me/password','POST',{oldPassword:d.get('oldPassword'),newPassword:d.get('newPassword')});e.target.reset();me=null;csrf='';dirty=false;showAuth('login');message('密码已修改，请重新登录。');});});
- $('#member-avatar-file').addEventListener('change',e=>action(async()=>{const file=e.target.files[0];if(!file)return;if(file.size>15000000)throw Error('请选择15MB以内的照片。');const bitmap=await createImageBitmap(file);const scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const data=canvas.toDataURL('image/jpeg',.85).split(',')[1],result=await call('/api/me/avatar','POST',{data});avatar=result.id;const img=$('#member-avatar-preview');profileAvatar(img,avatar,me.legacyAvatarSrc);const currentPortrait=$('#member-current-portrait');if(currentPortrait)profileAvatar(currentPortrait,avatar,me.legacyAvatarSrc);dirty=true;message('头像已上传，请保存草稿；公开版本暂未改变。');}));
+ $('#member-avatar-file').addEventListener('change',e=>action(async()=>{
+  const file=e.target.files[0],session=accountEpoch,accountId=me?.user?.id,current=()=>session===accountEpoch&&me?.user?.id===accountId;
+  if(!file||!accountId)return;if(file.size>15000000)throw Error('请选择15MB以内的照片。');let bitmap;
+  try{
+   bitmap=await createImageBitmap(file);if(!current())return;
+   const scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();bitmap=null;
+   const data=canvas.toDataURL('image/jpeg',.85).split(',')[1];if(!current())return;const result=await call('/api/me/avatar','POST',{data});if(!current())return;
+   avatar=result.id;const img=$('#member-avatar-preview');profileAvatar(img,avatar,me.legacyAvatarSrc);const currentPortrait=$('#member-current-portrait');if(currentPortrait)profileAvatar(currentPortrait,avatar,me.legacyAvatarSrc);dirty=true;message('头像已上传，请保存草稿；公开版本暂未改变。');
+  }finally{bitmap?.close();}
+ }));
  addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
  accountHandlersReady=true;
  }
