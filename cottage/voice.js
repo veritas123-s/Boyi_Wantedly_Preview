@@ -15,10 +15,14 @@ export function createVoiceClient({prefix,getAuth,getSelf,getOccupants,getPose,n
   stream?.getTracks().forEach(track=>track.stop());stream=null;if(capture){capture.port.onmessage=null;capture.port.close();capture.disconnect();}capture=null;source?.disconnect();source=null;
   for(const entry of speakers.values())clearSpeaker(entry);speakers.clear();mixer?.disconnect();mixer=null;context?.close().catch(()=>{});context=null;status.textContent=message;label();
  }
+ function reconcile(){
+  const selfRoom=getSelf()?.room,valid=new Map(getOccupants().filter(p=>p.voiceEnabled&&p.room===selfRoom).map(p=>[p.participantId,p.voiceSessionId]));
+  for(const [key,entry]of speakers)if(valid.get(key)!==entry.session){clearSpeaker(entry);speakers.delete(key);}
+ }
  function receive(buffer){
   if(!(buffer instanceof ArrayBuffer)||buffer.byteLength!==348||!context||context.state!=='running')return;
   const bytes=new Uint8Array(buffer),hex=[...bytes.slice(0,16)].map(b=>b.toString(16).padStart(2,'0')).join(''),id=[hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
-  const occupants=getOccupants(),valid=new Set(occupants.filter(p=>p.voiceEnabled).map(p=>p.participantId));for(const [key,entry]of speakers)if(!valid.has(key)){clearSpeaker(entry);speakers.delete(key);}
+  reconcile();const occupants=getOccupants();
   const session=[...bytes.slice(16,24)].map(b=>b.toString(16).padStart(2,'0')).join('');
   const peer=occupants.find(p=>p.participantId===id&&p.room===getSelf()?.room&&p.voiceSessionId===session);if(!peer)return;
   let entry=speakers.get(id);if(entry&&entry.session!==session){clearSpeaker(entry);speakers.delete(id);entry=null;}
@@ -49,5 +53,5 @@ export function createVoiceClient({prefix,getAuth,getSelf,getOccupants,getPose,n
   finally{if(epoch===generation){busy=false;button.disabled=false;}}
  }
  button.onclick=()=>enabled?stop():start();mute.onclick=()=>{muted=!muted;capture?.port.postMessage({type:'active',active:!muted});if(muted){activity.reset();voiceTail=0;}for(const track of stream?.getAudioTracks()||[])track.enabled=!muted;status.textContent=muted?'麦克风已静音，仍可听到同伴':'语音已开启 · 同空间的人可听到';label();};
- label();return{stop,start,getStats:()=>({enabled,muted,speaking:enabled&&!muted&&activity.isSpeaking(),speakers:speakers.size,receivedPackets,captureDropped,staleCaptureDropped,sendBackpressureDropped,playback:[...speakers.values()].map(s=>s.stats),speakerSessions:[...speakers.values()].map(s=>s.session),recording:false})};
+ label();return{stop,start,reconcile,getStats:()=>({enabled,muted,speaking:enabled&&!muted&&activity.isSpeaking(),speakers:speakers.size,receivedPackets,captureDropped,staleCaptureDropped,sendBackpressureDropped,playback:[...speakers.values()].map(s=>s.stats),speakerSessions:[...speakers.values()].map(s=>s.session),recording:false})};
 }

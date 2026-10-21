@@ -36,23 +36,25 @@ export function createClassroomScene(THREE,scene,{textures={},quality='balanced'
  for(const seat of ROOM_LAYOUT.classroom.seats){
   const{x,z}=seat;
   B(walnut,x,.25,z,.72,.5,.7);B(felt,x,.495,z,.70,.05,.67);
-  B(oak,x,1.00,z+.28,.73,.92,.10);
+  B(oak,x,.78,z+.28,.73,.52,.10);
   for(const dx of[-.27,.27])B(brass,x+dx,.31,z+.26,.045,.62,.045);
-  B(oak,x,1.015,z-.75,1.24,.13,.66);B(felt,x,1.086,z-.75,.96,.012,.48);
-  for(const dx of[-.49,.49])for(const dz of[-.22,.22])B(walnut,x+dx,.48,z-.75+dz,.055,.96,.055);
+  B(oak,x,.755,z-.75,.84,.13,.66);B(felt,x,.826,z-.75,.68,.012,.48);
+  for(const dx of[-.31,.31])for(const dz of[-.22,.22])B(walnut,x+dx,.35,z-.75+dz,.055,.70,.055);
   collider(seat.id+'-seat',x,z,.73,.56,.52);
-  collider(seat.id+'-back',x,z+.28,.73,.10,1.46);
-  collider(seat.id+'-desk-table',x,z-.75,1.24,.66,1.092);
+  collider(seat.id+'-back',x,z+.28,.73,.10,1.04);
+  collider(seat.id+'-desk-table',x,z-.75,.84,.66,.832);
  }
  // A low, jumpable podium keeps the screen visible from the side entrance.
- B(walnut,0,.14,-5.55,11,.28,2.7);B(oak,0,.29,-5.55,10.9,.02,2.6);collider('classroom-lectern-platform',0,-5.55,11,2.7,.3);
- B(oak,-4.15,.9,-5.05,1.18,1.2,.78);B(brass,-4.15,1.51,-5.05,1.28,.025,.87);collider('classroom-lectern-table',-4.15,-5.05,1.28,.87,1.522);
+ B(walnut,0,.14,-5.55,13,.28,2.7);B(oak,0,.29,-5.55,12.9,.02,2.6);collider('classroom-lectern-platform',0,-5.55,13,2.7,.3);
+ B(oak,-5.85,.9,-5.05,1.18,1.2,.78);B(brass,-5.85,1.51,-5.05,1.28,.025,.87);collider('classroom-lectern-table',-5.85,-5.05,1.28,.87,1.522);
  const ready=lettering(['博医教室','交流 · 分享 · 共同学习']);
  const screenMaterial=basic({map:ready,toneMapped:false});
- B(walnut,0,3.20,-7.29,9.98,5.665,.12);B(brass,0,3.20,-7.215,9.84,5.53,.02);
- const screen=new THREE.Mesh(plane,screenMaterial);screen.name='Classroom 16:9 presentation screen';screen.position.set(0,3.20,-7.18);screen.scale.set(9.6,5.4,1);root.add(screen);
- interactables.push({id:'classroom',label:'打开课堂课件',object:screen,point:new THREE.Vector3(0,3.20,-7.18)});
- const lecternProxy=new THREE.Mesh(box,basic({visible:false,transparent:true,opacity:0,colorWrite:false,depthWrite:false}));lecternProxy.position.set(-4.15,1.05,-5.05);lecternProxy.scale.set(1.28,1.52,.87);root.add(lecternProxy);interactables.push({id:'classroom',label:'打开课堂课件',object:lecternProxy,point:new THREE.Vector3(-4.15,1.4,-5.05)});
+ // Low backs and desks keep the natural 1.22 m seated Naidan eye line clear.
+ // The 16:9 board starts above every desk/back; all twenty server seat poses stay unchanged.
+ B(walnut,0,3.52,-7.29,8.70,4.945,.12);B(brass,0,3.52,-7.215,8.56,4.805,.02);
+ const screen=new THREE.Mesh(plane,screenMaterial);screen.name='Classroom 16:9 presentation screen';screen.position.set(0,3.52,-7.18);screen.scale.set(8.32,4.68,1);root.add(screen);
+ interactables.push({id:'classroom',label:'打开课堂课件',object:screen,point:new THREE.Vector3(0,3.52,-7.18)});
+ const lecternProxy=new THREE.Mesh(box,basic({visible:false,transparent:true,opacity:0,colorWrite:false,depthWrite:false}));lecternProxy.position.set(-5.85,1.05,-5.05);lecternProxy.scale.set(1.28,1.52,.87);root.add(lecternProxy);interactables.push({id:'classroom',label:'打开课堂课件',object:lecternProxy,point:new THREE.Vector3(-5.85,1.4,-5.05)});
  let originalLogoCount=0;
  for(const[texture,x]of[[textures.schoolLogo,-6.08],[textures.boyiLogo,6.08]])if(texture){
   const image=texture.image,aspect=image?.width&&image?.height?image.width/image.height:1,w=Math.min(1.3,1.3*aspect),h=w/aspect;
@@ -65,7 +67,7 @@ export function createClassroomScene(THREE,scene,{textures={},quality='balanced'
  for(const b of batches.values()){const object=new THREE.InstancedMesh(b.g,b.m,b.matrices.length);b.matrices.forEach((matrix,i)=>object.setMatrixAt(i,matrix));object.instanceMatrix.needsUpdate=true;object.receiveShadow=!ultra;object.castShadow=false;object.computeBoundingSphere();root.add(object);instances+=b.matrices.length;}
  batches.clear();
  const fairy=createBoyiFairy(THREE,root,{reduced:reduced||ultra,colliders,bounds:ROOM_BOUNDS.classroom,lightEnabled:!ultra});interactables.push(fairy.interactable);
- const stats={sceneKind:'private-classroom',seatCount:20,originalLogoCount,staticInstances:instances,quality,shadowLights:0,presentationAttached:false,disposed:false};
+ const stats={sceneKind:'private-classroom',seatCount:20,originalLogoCount,staticInstances:instances,quality,shadowLights:0,presentationAttached:false,presentationBounds:{minX:-4.16,maxX:4.16,minY:1.18,maxY:5.86,z:-7.18},seatBackTop:1.04,deskTop:.832,disposed:false};
  return{root,origin:ROOM_ORIGINS.classroom,bounds:ROOM_BOUNDS.classroom,connections:ROOM_PORTALS.classroom,connection:ROOM_PORTALS.classroom[0],colliders,interactables,stats,spawn:{x:6.6,z:0,yaw:Math.PI/2},
   setClassroomDoor(value){doorOpen=Boolean(value);},
   getPortal(p){return doorOpen&&p&&p.x>=7.78&&p.x<8.2&&Math.abs(p.z)<.8?'cottage':null;},

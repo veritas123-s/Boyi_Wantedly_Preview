@@ -12,12 +12,17 @@ const basicFields={name:'姓名',school:'学校或单位',major:'专业',grade:'
 const moreFields={bio:'简单介绍',interests:'兴趣方向',skills:'技能',languages:'语言',publicContact:'联系方式（选填）'};
 const editorBasic=['name','englishName','school','major','grade','className'],editorMore=['bio','interests','publicContact'];
 let registrationStep=0;
-let me=null,csrf='',config=null,avatar='',busy=false,dirty=false,lastUsername='';
+let me=null,csrf='',config=null,avatar='',busy=false,dirty=false,lastUsername='',restoreProfileInputs=null;
 let securityEpoch=0,profileSequence=0,directoryEpoch=0;
 const privateProfiles=new Map();
 const profilePrefixes=new WeakMap();
+function clearPrivateState(){
+ directoryEpoch++;privateProfiles.clear();
+ for(const id of ['member-private-list','member-private-view']){const node=document.getElementById(id);if(node)node.replaceChildren();}
+ const view=document.getElementById('member-private-view');if(view)view.hidden=true;
+}
 function clearAccountState(){
- securityEpoch++;directoryEpoch++;privateProfiles.clear();
+ securityEpoch++;clearPrivateState();
  for(const id of ['member-recovery','member-private-list','member-private-view','member-manage-people','member-manage-claims','member-preview','member-candidates','member-onboarding-actions','member-basic-fields','member-more-fields','member-identity-facts','portal-security']){const node=document.getElementById(id);if(node)node.replaceChildren();}
  for(const id of ['member-recovery','member-private-view','member-preview','portal-security','member-management','member-private-management']){const node=document.getElementById(id);if(node)node.hidden=true;}
  const root=document.getElementById('member-account-content');
@@ -52,8 +57,22 @@ function el(tag,text,className){const n=document.createElement(tag);if(text!==un
 function button(label,action,secondary=true){const b=el('button',label,'member-button'+(secondary?' secondary':''));b.type='button';b.addEventListener('click',action);return b;}
 function link(label,url,secondary=true){const a=el('a',label,'member-button'+(secondary?' secondary':''));a.href=url;return a;}
 function message(value,{scroll=true}={}){const n=$('#member-message');if(n){n.textContent=value;if(scroll&&value)n.scrollIntoView({block:'nearest',behavior:'smooth'});}}
-async function call(route,method='GET',body){const response=await fetch(api+route,{method,credentials:'include',headers:{...(body?{'Content-Type':'application/json'}:{}),...(method!=='GET'&&csrf?{'X-Boyi-CSRF':csrf}:{})},...(body?{body:JSON.stringify(body)}:{})});let data;try{data=await response.json();}catch{throw Error('暂时连接不上账号服务，请稍后重试。');}if(!response.ok){const e=Error(data.error||'操作没有完成，请重试。');e.status=response.status;throw e;}return data;}
-async function action(fn,{scroll=true}={}){if(busy)return;busy=true;const buttons=$$('.member-main button');const previous=buttons.map(b=>b.disabled);buttons.forEach(b=>b.disabled=true);try{await fn();}catch(e){message(e.message||'暂时无法完成，请稍后重试。',{scroll});}finally{busy=false;buttons.forEach((b,i)=>b.disabled=previous[i]);}}
+async function call(route,method='GET',body){
+ const privateRead=method==='GET'&&(route==='/api/manage/profile-directory'||route.startsWith('/api/manage/profiles/')),epoch=directoryEpoch,accountId=me?.user?.id;
+ const response=await fetch(api+route,{method,credentials:'include',headers:{...(body?{'Content-Type':'application/json'}:{}),...(method!=='GET'&&csrf?{'X-Boyi-CSRF':csrf}:{})},...(body?{body:JSON.stringify(body)}:{})});
+ if(privateRead&&[401,403].includes(response.status)){
+  const note=response.status===401?'登录已失效，请重新登录。':'当前账号没有查看成员资料的权限。';
+  if(epoch===directoryEpoch&&me?.user?.id===accountId){clearPrivateState();if(response.status===401)showAuth('login');message(note,{scroll:false});}
+  const error=Error(note);error.status=response.status;throw error;
+ }
+ let data;try{data=await response.json();}catch{throw Error('暂时连接不上账号服务，请稍后重试。');}if(!response.ok){const e=Error(data.error||'操作没有完成，请重试。');e.status=response.status;throw e;}return data;
+}
+function lockProfileInputs(){
+ if(restoreProfileInputs)return;
+ const inputs=$$('#member-profile-form input, #member-profile-form textarea, #member-profile-form select'),previous=inputs.map(n=>n.disabled);
+ inputs.forEach(n=>n.disabled=true);restoreProfileInputs=()=>inputs.forEach((n,i)=>n.disabled=previous[i]);
+}
+async function action(fn,{scroll=true}={}){if(busy)return;busy=true;const buttons=$$('.member-main button');const previous=buttons.map(b=>b.disabled);buttons.forEach(b=>b.disabled=true);try{await fn();}catch(e){message(e.message||'暂时无法完成，请稍后重试。',{scroll});}finally{restoreProfileInputs?.();restoreProfileInputs=null;busy=false;buttons.forEach((b,i)=>b.disabled=previous[i]);}}
 function profileUrl(id){return new URL('people/?id='+encodeURIComponent(id),site).href;}
 function imageUrl(id){return api+'/api/images/'+id;}
 function legacyAvatarUrl(value){
@@ -161,7 +180,7 @@ function completeness(profile){
 async function privateDirectory(){
  const epoch=++directoryEpoch,accountId=me?.user?.id,result=await call('/api/manage/profile-directory'),host=$('#member-private-list');
  if(epoch!==directoryEpoch||me?.user?.id!==accountId)return;const allowed=new Set(result.items.map(u=>u.id));for(const id of privateProfiles.keys())if(!allowed.has(id))privateProfiles.delete(id);host.replaceChildren();const previousView=$('#member-private-view');previousView.hidden=true;previousView.replaceChildren();
- const summary=el('p','按已保存的姓名、学校或单位、专业、年级、班级、肖像、简介、兴趣 8 项统计；联系方式不计入。本页内复用读取结果，点某行“更新”读取最新资料。','member-help');host.append(summary);
+ const summary=el('p','按已保存的姓名、学校或单位、专业、年级、班级、肖像、简介、兴趣 8 项统计；联系方式不计入。本页内复用读取结果，点某行“更新”读取最新资料。左右滑动查看全部。','member-help');host.append(summary);
  const wrap=el('div',undefined,'member-directory-table-wrap'),table=el('table',undefined,'member-directory-table'),head=el('thead'),hr=el('tr'),body=el('tbody');
  for(const label of ['姓名','班级 / 期次','资料完善度','查看']){const th=el('th',label);th.scope='col';hr.append(th);}head.append(hr);table.append(head,body);wrap.append(table);host.append(wrap);
  const jobs=[];
@@ -177,7 +196,7 @@ async function privateDirectory(){
  let next=0;async function worker(){while(epoch===directoryEpoch&&me?.user?.id===accountId&&next<jobs.length)await jobs[next++]();}void Promise.all(Array.from({length:Math.min(3,jobs.length)},worker));
 }
 
-async function save(){const form=$('#member-profile-form');if(!form.reportValidity())throw Error('请先填写姓名，并检查页面中的资料。');const data=await call('/api/me/profile','PUT',{profile:collect(),version:me.version});me={...me,...data};dirty=false;if(data.onboarding.canEdit===false){showDashboard(me);throw Error('新姓名和草稿已保存，请先重新核对同名主页，再预览和公开。');}$('#member-save-state').textContent='已保存草稿 · '+new Date().toLocaleTimeString('zh-CN');return data;}
+async function save(){const form=$('#member-profile-form');if(!form.reportValidity())throw Error('请先填写姓名，并检查页面中的资料。');const body={profile:collect(),version:me.version},accountId=me.user.id;lockProfileInputs();const data=await call('/api/me/profile','PUT',body);if(me?.user?.id!==accountId)throw Error('登录状态已变化，请重新登录后查看保存结果。');me={...me,...data};dirty=false;if(data.onboarding.canEdit===false){showDashboard(me);throw Error('新姓名和草稿已保存，请先重新核对同名主页，再预览和公开。');}$('#member-save-state').textContent='已保存草稿 · '+new Date().toLocaleTimeString('zh-CN');return data;}
 function recoveryBox(code){const box=$('#member-recovery');box.replaceChildren(el('h2','请保存账号恢复码'),el('p','忘记密码时，可以用它重设密码。恢复码只显示这一次，请单独保存，不要发到公开主页。'),el('p',code,'member-recovery-code'));const a=button('下载恢复码',()=>{const blob=new Blob(['博医云账号恢复码\n账号：'+(lastUsername||'注册时填写的账号')+'\n恢复码：'+code+'\n请妥善保存，不要公开。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),download=el('a');download.href=url;download.download='博医云账号恢复码.txt';download.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});box.append(a,button('我已保存',()=>{box.hidden=true;box.replaceChildren();}));box.hidden=false;}
 function showAuth(tab='login'){clearAccountState();$('#member-auth').hidden=false;$('#member-dashboard').hidden=true;if(tab==='register')registerStep(0);for(const t of ['login','register','recover']){$('#'+t+'-form').hidden=t!==tab;const b=$('[data-auth-tab="'+t+'"]');if(b)b.setAttribute('aria-selected',String(t===tab));}message('');document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:false}}));}
 function showDashboard(data){
