@@ -36,3 +36,5 @@ The ZIP adapter additionally reads decompressed output incrementally and pauses 
 Local modifications (2026-10-22): derive expansion budgets from currently available browser memory, support cancellation during ZIP reads, and reject failed image decoding instead of leaving the capture promise pending.
 
 Local modifications (2026-10-23): propagate AbortSignal through html-to-image clone, resource fetch, FileReader and Image.decode; serialize capture ownership through complete cleanup, reset cancelled image sources and release late canvases. Raster/SVG image dimensions and total decoded-pixel budgets are validated before browser decoding; uncheckable formats are explicitly refused. Build-time transforms are defined in pptx-tools/capture-patches.mjs; licensed upstream source files remain unchanged.
+
+Local modification (2026-10-23): explicitly refuse SVG feImage filter resources before browser image decoding instead of silently dropping unsupported artwork.

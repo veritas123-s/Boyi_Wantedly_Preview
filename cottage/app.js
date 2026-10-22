@@ -4,7 +4,7 @@ import {createSocialClient} from './social.js?v=3a208e35de6b';
 import {createAvatar,getAvatarMetrics} from './avatars.js?v=62a22527fc64';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=08fafb485a70';
 import {createCinemaPlayer} from './cinema-player.js?v=2a2ddb737e40';
-import {createClassroomPlayer} from './classroom-player.js?v=4043e1758da3';
+import {createClassroomPlayer} from './classroom-player.js?v=5389675d3f78';
 const $ = selector => document.querySelector(selector);
 const view=$('#room-view'),enter=$('#enter-room'),arrival=$('#arrival'),hud=$('#room-hud'),dialog=$('#room-dialog');
 const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches,coarse=matchMedia('(pointer:coarse)').matches;
