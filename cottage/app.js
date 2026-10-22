@@ -3,7 +3,7 @@ import {attachSocialPlay} from './social-play.js?v=074dcfdd22ab';
 import {createSocialClient} from './social.js?v=efaa9063fee7';
 import {createAvatar,getAvatarMetrics} from './avatars.js?v=62a22527fc64';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=08fafb485a70';
-import {createCinemaPlayer} from './cinema-player.js?v=6f2c7969f7d9';
+import {createCinemaPlayer} from './cinema-player.js?v=2a2ddb737e40';
 import {createClassroomPlayer} from './classroom-player.js?v=18a4b9dc2227';
 const $ = selector => document.querySelector(selector);
 const view=$('#room-view'),enter=$('#enter-room'),arrival=$('#arrival'),hud=$('#room-hud'),dialog=$('#room-dialog');

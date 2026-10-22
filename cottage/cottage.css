@@ -93,3 +93,5 @@ body.cinema-viewing #room-notice{display:none}
 #cinema-bili-note{grid-row:3;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;padding:8px 12px;background:#11161d;color:#dfd5c5;font-size:13px}
 #cinema-bili-note button,#cinema-bili-note a{padding:7px 12px;border:1px solid #8c744d;border-radius:6px;color:inherit;background:#20252c;text-decoration:none}
 @media(max-width:600px){#cinema-bili-note{font-size:12px;gap:6px;padding:6px}#cinema-bili-note span{width:100%;text-align:center}}
+
+#cinema-bili-identity{font-size:13px;color:#f4dfb2;letter-spacing:.02em;overflow-wrap:anywhere;max-width:100%}
