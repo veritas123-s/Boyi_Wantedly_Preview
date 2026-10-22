@@ -103,12 +103,41 @@ export function createSocialClient({THREE,scene,camera,player,getYaw,getMovement
  async function action(kind,id){if(!joined){notice('请先连接会客空间');return false;}const epoch=roomEpoch,session=token,room=self?.room;const current=()=>joined&&!closed&&epoch===roomEpoch&&session===token&&self?.room===room;try{const data=await send('/action',{kind,...(id?{id}:{})});if(!data||!current())return false;return true;}catch(error){if(current())notice(error.message);return false;}}
  function toggleCinemaDoor(){return action('toggleCinemaDoor');}
  function toggleClassroomDoor(){return action('toggleClassroomDoor');}
- async function fetchPresentationFile(deckId){
+ async function uploadPresentation(file,{signal,onProgress=()=>{}}={}){
+  if(!joined||!token||self?.room!=='classroom')throw Error('请先进入教室');
+  const epoch=roomEpoch,session=token,participantId=self.participantId;
+  const data=await new Promise((resolve,reject)=>{
+   const xhr=new XMLHttpRequest();let settled=false,timer;
+   const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',cancel);error?reject(error):resolve(value);};
+   const cancel=()=>{finish(signal?.reason||new DOMException('已取消上传','AbortError'));xhr.abort();};
+   const deadline=(ms,message)=>{clearTimeout(timer);timer=setTimeout(()=>{finish(Error(message));xhr.abort();},ms);};
+   xhr.open('POST',prefix+'/presentation-upload');xhr.withCredentials=true;
+   xhr.setRequestHeader('Content-Type','application/vnd.openxmlformats-officedocument.presentationml.presentation');
+   xhr.setRequestHeader('X-Boyi-Participant',participantId);xhr.setRequestHeader('X-Boyi-Token',session);xhr.setRequestHeader('X-Boyi-Filename',encodeURIComponent(file.name));
+   xhr.upload.onprogress=event=>{deadline(60000,'课件上传超过一分钟没有进展，请检查网络后重试');onProgress({phase:'upload',loaded:event.loaded,total:event.lengthComputable?event.total:file.size});};
+   xhr.upload.onload=()=>{deadline(180000,'服务器校验课件超时，请重新读取投影或重试');onProgress({phase:'validate',loaded:file.size,total:file.size});};
+   xhr.onerror=()=>finish(Error('课件上传连接中断，请检查网络后重试'));
+   xhr.onabort=()=>finish(new DOMException('已取消上传','AbortError'));
+   xhr.onload=()=>{let value;try{value=JSON.parse(xhr.responseText);}catch{return finish(Error('服务器未返回课件结果，请重试'));}if(xhr.status<200||xhr.status>=300)return finish(Object.assign(Error(value.error||'这次课件未能分享，请重试'),{status:xhr.status,data:value}));finish(null,value);};
+   signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted){cancel();return;}
+   deadline(60000,'课件上传超过一分钟没有进展，请检查网络后重试');xhr.send(file);
+  });
+  if(!joined||closed||epoch!==roomEpoch||session!==token||self?.participantId!==participantId||self?.room!=='classroom')return null;
+  if(data.self&&!await apply(data,{epoch}))return null;return data;
+ }
+ async function fetchPresentationFile(deckId,{signal,onProgress=()=>{}}={}){
   if(!joined||!token||self?.room!=='classroom')throw Error('请先进入教室');const epoch=roomEpoch,session=token,participantId=self.participantId;
-  const response=await fetch(prefix+'/presentation-file',{method:'GET',credentials:'include',cache:'no-store',headers:{'X-Boyi-Participant':participantId,'X-Boyi-Token':session,...(deckId?{'X-Boyi-Deck':deckId}:{})}});
+  const controller=new AbortController();let timer;const cancel=()=>controller.abort(signal.reason),progress=()=>{clearTimeout(timer);timer=setTimeout(()=>controller.abort(Error('课件读取超过一分钟没有进展，请重新读取投影')),60000);};signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();progress();
+  try{
+  const response=await fetch(prefix+'/presentation-file',{method:'GET',credentials:'include',cache:'no-store',signal:controller.signal,headers:{'X-Boyi-Participant':participantId,'X-Boyi-Token':session,...(deckId?{'X-Boyi-Deck':deckId}:{})}});progress();
   if(!response.ok){let data;try{data=await response.json();}catch{}throw Object.assign(Error(data?.error||'暂时无法读取课件'),{status:response.status});}
-  if(response.headers.get('content-type')!=='application/vnd.openxmlformats-officedocument.presentationml.presentation'||Number(response.headers.get('content-length'))>10*1024*1024)throw Error('课件响应不正确');const buffer=await response.arrayBuffer(),actual=response.headers.get('x-boyi-deck-id');if(buffer.byteLength>10*1024*1024)throw Error('课件超过10MB');
+  if(response.headers.get('content-type')?.split(';')[0]!=='application/vnd.openxmlformats-officedocument.presentationml.presentation')throw Error('课件响应不正确');
+  const total=Number(response.headers.get('content-length'))||0,heap=globalThis.performance?.memory,available=heap?Math.max(0,heap.jsHeapSizeLimit-heap.usedJSHeapSize):Infinity,memoryBudget=Math.floor(Math.min((Number(globalThis.navigator?.deviceMemory)||4)*1024*1048576*.08,available*.2)),reader=response.body?.getReader(),chunks=[];let loaded=0,buffer;
+  const checkMemory=bytes=>{if(bytes>memoryBudget)throw Error('当前浏览器可用内存不足以读取这份课件，请关闭其他页面后重试');};
+  if(reader){try{checkMemory(total);for(;;){const next=await reader.read();if(next.done)break;progress();loaded+=next.value.byteLength;checkMemory(loaded);chunks.push(next.value);onProgress({loaded,total});}buffer=await new Blob(chunks).arrayBuffer();}catch(error){await reader.cancel().catch(()=>{});throw error;}finally{reader.releaseLock();chunks.length=0;}}else{checkMemory(total);buffer=await response.arrayBuffer();checkMemory(buffer.byteLength);}
+  const actual=response.headers.get('x-boyi-deck-id');if(total&&buffer.byteLength!==total)throw Error('课件下载不完整，请重试');
   if(!joined||closed||epoch!==roomEpoch||session!==token||self?.participantId!==participantId||self?.room!=='classroom')return null;if(!actual||deckId&&actual!==deckId)throw Error('课件已更换，请重新读取');return{buffer,deckId:actual};
+  }catch(error){throw controller.signal.aborted?controller.signal.reason||error:error;}finally{clearTimeout(timer);signal?.removeEventListener('abort',cancel);}
  }
  async function changeNickname(value){
   if(typeof value!=='string'||![...value.trim()].length){notice('请填写1至18个文字的小屋昵称');return false;}
@@ -140,5 +169,5 @@ export function createSocialClient({THREE,scene,camera,player,getYaw,getMovement
  function pick(raycaster){const hits=raycaster.intersectObjects([...peers.values()].map(p=>p.model.root),true);if(!hits[0]||hits[0].distance>3.5)return null;let node=hits[0].object;while(node?.parent&&node.parent!==scene)node=node.parent;return [...peers.values()].find(p=>p.model.root===node)?.data||null;}
  function leave(){roomEpoch++;pollGeneration++;closed=true;journalLease='';clearTimeout(reconnectTimer);voice.stop();onState?.({disconnected:true},[]);joined=false;clearInterval(expiryTimer);clearConversations();pollController?.abort();if(self&&token)navigator.sendBeacon(prefix+'/leave',new Blob([JSON.stringify(auth({}))],{type:'application/json'}));resumeCredentials=null;sessionNickname='';for(const p of peers.values())p.model.dispose();peers.clear();inbox.clear();messages.length=0;previewRenderer?.dispose();previewRenderer?.forceContextLoss();previewCache.clear();}
  $('#room-dialog').addEventListener('close',clearChat);
- return{join,enterRoom,toggleCinemaDoor,toggleClassroomDoor,fetchPresentationFile,changeNickname,showAvatarChoices:showChoices,needsNickname:()=>!sessionNickname,journalRead,journalAcquire,journalRenew,journalSave,journalRelease,update,pick,openChat,leave,action,send,sitNearby,pickupNearby,getPose:()=>poseFor(self),getOccupants:()=>occupants,getSelf:()=>self,getStats:()=>({joined,voice:voice.getStats(),pose:self?poseFor(self):null,occupants:occupants.length,self:self?{participantId:self.participantId,avatarId:self.avatarId,variant:self.variant,verified:self.verified,cohort:self.cohort,canEnterCottage:self.canEnterCottage}:null,room:self?.room||'lobby',peers:peers.size,peerActions:[...peers.values()].map(p=>({id:p.data.participantId,seatId:p.data.seatId,heldItemId:p.data.heldItemId,action:p.data.action,rig:p.model.getRigPose()})),canChooseAvatar:!!self?.canChooseAvatar})};
+ return{join,enterRoom,toggleCinemaDoor,toggleClassroomDoor,fetchPresentationFile,uploadPresentation,changeNickname,showAvatarChoices:showChoices,needsNickname:()=>!sessionNickname,journalRead,journalAcquire,journalRenew,journalSave,journalRelease,update,pick,openChat,leave,action,send,sitNearby,pickupNearby,getPose:()=>poseFor(self),getOccupants:()=>occupants,getSelf:()=>self,getStats:()=>({joined,voice:voice.getStats(),pose:self?poseFor(self):null,occupants:occupants.length,self:self?{participantId:self.participantId,avatarId:self.avatarId,variant:self.variant,verified:self.verified,cohort:self.cohort,canEnterCottage:self.canEnterCottage}:null,room:self?.room||'lobby',peers:peers.size,peerActions:[...peers.values()].map(p=>({id:p.data.participantId,seatId:p.data.seatId,heldItemId:p.data.heldItemId,action:p.data.action,rig:p.model.getRigPose()})),canChooseAvatar:!!self?.canChooseAvatar})};
 }

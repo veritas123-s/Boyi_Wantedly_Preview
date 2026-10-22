@@ -33,3 +33,4 @@ Additional notices: ZRender (BSD-3-Clause), pako (MIT), ECharts d3 portions (BSD
 
 Local modifications (2026-10-20): static ECharts animation disabled and drawing flushed before capture; html-to-image cache explicitly cleared after each capture. Upstream source files are preserved unchanged in the build input directory; these two transformations are defined in build-classroom-renderer.mjs.
 The ZIP adapter additionally reads decompressed output incrementally and pauses before exceeding actual per-entry/XML/total limits, including forged archive length declarations. See pptx-tools/bounded-zip-entry.js and the pinned build transformations.
+Local modifications (2026-10-22): derive expansion budgets from currently available browser memory, support cancellation during ZIP reads, and reject failed image decoding instead of leaving the capture promise pending.

@@ -1,7 +1,21 @@
+// Official player contract: https://player.bilibili.com/
+// Only video identity and part are carried into the cross-origin iframe.
+export function biliVideo(value){
+ const text=String(value||'').trim();let url;
+ try{url=new URL(/^(?:BV[0-9A-Za-z]{10}|av[1-9][0-9]*)$/i.test(text)?'https://www.bilibili.com/video/'+text:text);}catch{return null;}
+ if(url.protocol!=='https:'||url.username||url.password||url.port||!['www.bilibili.com','m.bilibili.com'].includes(url.hostname))return null;
+ const match=/^\/video\/(BV[0-9A-Za-z]{10}|av[1-9][0-9]*)\/?$/i.exec(url.pathname);if(!match)return null;
+ const rawPart=url.searchParams.get('p')||'1';if(!/^[1-9][0-9]{0,8}$/.test(rawPart))return null;
+ const part=Number(rawPart),id=match[1].slice(0,2).toLowerCase()==='bv'?'BV'+match[1].slice(2):'av'+match[1].slice(2);
+ const address=new URL('https://www.bilibili.com/video/'+id+'/');if(part!==1)address.searchParams.set('p',String(part));
+ const player=new URL('https://player.bilibili.com/player.html');player.searchParams.set(id.startsWith('BV')?'bvid':'aid',id.startsWith('BV')?id:id.slice(2));player.searchParams.set('p',String(part));player.searchParams.set('autoplay','0');player.searchParams.set('poster','1');player.searchParams.set('danmaku','0');
+ return{key:id+':'+part,id,part,url:address.href,playerUrl:player.href};
+}
+
 export const BILIBILI_HOSTS=Object.freeze(['www.bilibili.com','search.bilibili.com','space.bilibili.com','t.bilibili.com','live.bilibili.com','m.bilibili.com','passport.bilibili.com','account.bilibili.com']);
 export function biliAddress(value){
  const text=String(value||'').trim();if(!text||text.length>2048||/[\u0000-\u001f\u007f]/u.test(text))throw Error('请输入搜索关键词或哔哩哔哩网址');
- let url;
+ const video=biliVideo(text);if(video)return video.url;let url;
  if(/^https?:\/\//i.test(text)||/^[\w.-]+\.bilibili\.com(?:[/:?#]|$)/i.test(text)){
   try{url=new URL(/^https?:\/\//i.test(text)?text:'https://'+text);}catch{throw Error('这个网址无法打开');}
   if(url.protocol!=='https:'||url.username||url.password||url.port||!BILIBILI_HOSTS.includes(url.hostname))throw Error('这里只打开哔哩哔哩的 HTTPS 网页');
@@ -31,7 +45,7 @@ export function attachBilibiliBrowser({openPanel,getSelf,send,notice}){
  $('#bili-back').onclick=()=>{if(position>0){position--;navigate(history[position],{remember:false});}};
  $('#bili-forward').onclick=()=>{if(position<history.length-1){position++;navigate(history[position],{remember:false});}};
  $('#bili-reload').onclick=render;
- $('#bili-share').onclick=async()=>{if(sharePending)return;sharePending=true;update();try{const result=await send('/media',{action:'load',kind:'web',url:current});if(result)status.textContent='已把这个网页入口分享给放映室；页面内操作仍由各自控制';}catch(error){status.textContent=error.message;}finally{sharePending=false;update();}};
+ $('#bili-share').onclick=async()=>{if(sharePending)return;sharePending=true;update();try{const result=await send('/media',{action:'load',kind:'web',url:current});if(result)status.textContent=biliVideo(current)?'已把视频分享到放映室银幕；点击播放器播放，各自控制进度和声音':'已把这个网页入口分享给放映室；页面内操作仍由各自控制';}catch(error){status.textContent=error.message;}finally{sharePending=false;update();}};
  const observer=new MutationObserver(()=>{if(panel.hidden||!dialog.open)unload();});observer.observe(panel,{attributes:true,attributeFilter:['hidden']});
  dialog.addEventListener('close',unload);
  return{open,openShared,apply(movie){shared=movie?.kind==='web'?movie:null;if(!shared&&getSelf()?.room==='cinema')shared=movie||null;update();},clearShared(){shared=null;update();},isOpen:()=>opened&&!panel.hidden&&dialog.open,getStats:()=>({open:opened&&!panel.hidden&&dialog.open,url:opened?current:null,sharedKind:shared?.kind||null,entryHistory:history.length}),dispose(){observer.disconnect();dialog.removeEventListener('close',unload);unload();}};

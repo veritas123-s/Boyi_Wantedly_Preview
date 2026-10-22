@@ -143,11 +143,11 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   for (const side of [-1, 1]) for (let i = 0; i < 6; i++)
     batch(cylinder, velvet, [side * (4.45 + i * .2), 2.7, -6], [.105, 4.9, .16]);
   B(velvet, 0, 5.13, -6, 11.2, .18, .32);
-  const ready = lettering(['博医放映室', '选一部电影，坐下来一起看', '让好故事在此相遇'], 1024, 576);
+  const ready = lettering(['博医放映室', '靠近银幕按 E，打开完整银幕', 'MP4 / WebM · B站视频'], 1024, 576);
   const screenMaterial = basic({ map: ready, toneMapped: false });
   const screen = mesh(plane, screenMaterial, [0, 2.6, -6.05], [8, 4.5, 1]);
   screen.name = 'Cinema screen'; screen.userData.interactionId = 'cinema';
-  interactables.push({ id: 'cinema', label: '放映控制', object: screen, point: new THREE.Vector3(0, 2.6, -6.05) });
+  interactables.push({ id: 'cinema', label: '打开银幕 / 放映控制', object: screen, point: new THREE.Vector3(0, 2.6, -6.05) });
   // Door geometry and its moving collider live once in the cottage scene.
   // App includes that same leaf when raycasting from either side of the opening.
   let doorOpen=false;
