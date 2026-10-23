@@ -1,6 +1,6 @@
 import {createKeyBindings} from './controls.js?v=e2832aab13b4';
 import {attachSocialPlay} from './social-play.js?v=074dcfdd22ab';
-import {createSocialClient} from './social.js?v=3a208e35de6b';
+import {createSocialClient} from './social.js?v=e5ddf3f46fd5';
 import {createAvatar,getAvatarMetrics} from './avatars.js?v=62a22527fc64';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=08fafb485a70';
 import {createCinemaPlayer} from './cinema-player.js?v=2a2ddb737e40';

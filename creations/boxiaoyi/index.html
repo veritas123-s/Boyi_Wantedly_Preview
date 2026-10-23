@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#8d202c"><meta name="description" content="和博小医招手、陪读、玩耍。一份保存在当前设备的数字人养成测试版。">
+ <title>博小医 · 博医造物</title>
+ <link rel="stylesheet" href="./style.css?v=14"><script type="module" src="./app.js?v=14"></script>
+</head>
+<body>
+ <a class="skip" href="#main">跳到正文</a>
+ <header class="floating-header">
+  <a class="brand" href="../../" aria-label="博医云首页"><span class="marks"><img src="../../media/brand/shsmu-mark.webp?v=801d44c003" alt="上海交通大学医学院" width="40" height="40"><img src="../../media/brand/boyi-mark.webp?v=f0fcd86a9b" alt="荣昶博医" width="40" height="40"></span><strong>博医云</strong></a>
+  <nav id="site-nav" aria-label="主导航"><a href="../../window/">博医之窗</a><a href="../../journeys/">博医之路</a><a href="../../voices/">博医之声</a><a href="../../study/">博医学堂</a><a href="../" aria-current="page">博医造物</a><a class="account" href="../../account/">我的主页</a></nav>
+  <button id="menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false">菜单</button>
+ </header>
+ <main id="main">
+  <nav class="crumb" aria-label="当前位置"><a href="../">博医造物</a><span>/</span><span>博小医</span></nav>
+  <header class="page-heading"><div><p class="eyebrow">一个慢慢熟悉你的数字同伴</p><h1>你好，我是博小医<span class="beta">测试版</span></h1></div><p>学习的空隙，见个面</p></header>
+  <section class="companion-layout" aria-label="博小医互动空间">
+   <div class="stage-card">
+    <div class="stage-top"><span id="stage-badge">初见 · 成长 0</span><label class="motion-setting"><input id="motion" type="checkbox" checked> 动态</label></div>
+    <div id="model-stage" class="model-stage" role="group" tabindex="0" aria-label="博小医三维形象。拖动或左右方向键旋转，空格招手，M摸头">
+     <canvas id="model-canvas" aria-hidden="true"></canvas>
+     <div id="fallback-avatar" class="fallback-avatar" hidden aria-hidden="true"><div class="fallback-hair"></div><div class="fallback-head"><i></i><i></i><span>⌣</span></div><div class="fallback-body"><span>博</span><b>✚</b></div><div class="fallback-arm left"></div><div class="fallback-arm right"></div><div class="fallback-leg left"></div><div class="fallback-leg right"></div></div>
+     <p id="model-loading" class="model-loading" role="status">博小医正在过来…</p>
+     <p id="speech" class="speech" aria-live="polite">今天想一起做点什么？</p>
+     <span class="affection" aria-hidden="true">♡ <i>♡</i> ♡</span>
+     <span class="stage-watermark" aria-hidden="true">BO XIAO YI</span>
+    </div>
+    <div class="view-tools"><span id="view-help">拖动形象，转一圈看看</span><div><button id="rotate-left" type="button" aria-label="向左旋转形象">↶</button><button id="reset-view" type="button">正面</button><button id="rotate-right" type="button" aria-label="向右旋转形象">↷</button></div></div>
+   </div>
+   <div class="care-card">
+    <header><p class="eyebrow">相处日常</p><h2 id="mood-label">今天心情不错</h2><p class="care-intro">摸摸头，或和我专注一小会儿</p></header>
+    <div class="meters"><div><label for="energy">精力 <output id="energy-value">72</output></label><progress id="energy" max="100" value="72">72</progress></div><div><label for="mood">心情 <output id="mood-value">65</output></label><progress id="mood" max="100" value="65">65</progress></div></div>
+    <div class="care-actions" aria-label="日常互动">
+     <button data-care="wave" type="button"><span aria-hidden="true">✋</span><strong>招招手</strong><small>打个招呼</small></button>
+     <button data-care="pet" type="button"><span aria-hidden="true">♡</span><strong>摸摸头</strong><small>靠近一点</small></button>
+     <button data-care="feed" type="button"><span aria-hidden="true">ϟ</span><strong>补充能量</strong><small>精力 +18</small></button>
+     <button data-care="study" type="button"><span aria-hidden="true">▤</span><strong>一起陪读</strong><small>专注 30 秒</small></button>
+     <button data-care="play" type="button"><span aria-hidden="true">✦</span><strong>一起玩耍</strong><small>放松一下</small></button>
+     <button data-care="rest" type="button"><span aria-hidden="true">☾</span><strong>休息一会</strong><small>恢复 8 秒</small></button>
+    </div>
+    <div id="session" class="session" hidden><div><strong id="session-title"></strong><span id="session-time"></span></div><progress id="session-progress" max="100" value="0"></progress><button id="cancel-session" type="button">结束这次陪伴</button></div>
+    <p id="feedback" class="feedback" role="status" aria-live="polite">招手、摸头都可以直接试试</p>
+    <button id="open-memory" class="memory-entry" type="button"><span>小小记忆挑战<small>记住亮起的顺序，再点一次</small></span><b aria-hidden="true">↗</b></button>
+   </div>
+  </section>
+  <section class="growth-card" aria-labelledby="growth-title"><div><p class="eyebrow" id="growth-title">一起成长</p><h2 id="growth-stage">初见</h2></div><div class="growth-track"><div><span id="growth-detail">0 / 60 成长</span><span id="growth-reward">60 成长解锁星星徽章</span></div><progress id="growth" max="60" value="0"></progress></div><p id="storage-note">成长保存在当前设备的浏览器，刷新后仍会记得</p></section>
+  <section class="about-companion" aria-label="关于测试版"><details><summary>博小医现在能做什么？</summary><p>可以 360° 查看形象，招手、摸头、补能、陪读、玩耍、休息，完成记忆挑战；成长会解锁形象旁的星星徽章和书桌小花。测试版不使用摄像头，不采集个人健康信息。</p><p>成长仅保存在当前设备；清除网站数据会重置，不与账号或其他设备同步。后台页面会暂停渲染与陪读计时，减少动态后保留静态姿态和文字反馈。</p></details><details><summary>想了解博医，去哪里看？</summary><p><a href="../../window/">博医之窗</a>介绍培养计划与人物，<a href="../../study/">博医学堂</a>收录工作坊与交流活动，<a href="../../cottage/?enter=cottage">博医小屋</a>可以与同伴相遇。这个测试版使用预设互动，不提供医疗诊断。</p></details></section>
+ </main>
+ <footer><a href="../">← 返回博医造物</a><span>博医云 · 把想法，做出来</span></footer>
+ <dialog id="memory-dialog" aria-labelledby="memory-title"><div class="dialog-top"><h2 id="memory-title">小小记忆挑战</h2><button id="close-memory" type="button" aria-label="关闭记忆挑战">×</button></div><p id="memory-instructions" role="status" aria-live="polite">先看顺序，再按相同顺序点亮四张卡片</p><div class="memory-grid"><button data-memory="0" type="button" aria-label="一号，书本">1 <span aria-hidden="true">▤</span></button><button data-memory="1" type="button" aria-label="二号，星星">2 <span aria-hidden="true">✦</span></button><button data-memory="2" type="button" aria-label="三号，小花">3 <span aria-hidden="true">✿</span></button><button data-memory="3" type="button" aria-label="四号，月亮">4 <span aria-hidden="true">☾</span></button></div><p id="memory-sequence" class="memory-sequence" aria-live="polite"></p><button id="start-memory" class="primary" type="button">开始挑战</button><p class="dialog-note">可以用键盘 1、2、3、4 作答；每次成功后有 25 秒间隔</p></dialog>
+ <noscript><p class="noscript">开启 JavaScript 后可以体验博小医。<a href="../">返回博医造物</a></p></noscript>
+</body></html>

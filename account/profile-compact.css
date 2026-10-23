@@ -1,0 +1,59 @@
+/* Account-only compact editor. Public profiles and their visibility rules stay unchanged. */
+body.profile-compact .member-main{width:min(1280px,calc(100% - 48px));max-width:1280px}
+body.profile-compact .portal-dashboard-layout{grid-template-columns:156px minmax(0,1fr);gap:16px}
+body.profile-compact .portal-editor-nav{padding:4px}
+body.profile-compact .portal-editor-nav a{min-height:36px;padding:7px 9px;font-size:13px}
+body.profile-compact .member-panel{padding:16px;margin-bottom:14px}
+body.profile-compact .member-panel h2{font-size:23px;margin:0 0 8px;line-height:1.35}
+body.profile-compact .member-panel h3{font-size:18px;margin:12px 0 8px}
+body.profile-compact .member-panel p{margin:6px 0;line-height:1.5}
+body.profile-compact .member-form{gap:12px}
+body.profile-compact .member-grid{gap:10px 14px}
+body.profile-compact .member-field{gap:4px;font-size:13px;line-height:1.4}
+body.profile-compact .member-field small{font-size:12px;line-height:1.4;margin:0}
+body.profile-compact .member-form :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea){min-height:38px;padding:7px 10px;border-radius:5px;font-size:15px;line-height:1.5}
+body.profile-compact .member-form textarea{min-height:72px}
+body.profile-compact .member-help,body.profile-compact .member-identity-details{font-size:13px;line-height:1.5}
+body.profile-compact .member-actions{gap:8px}
+body.profile-compact .member-button{min-height:38px;padding:8px 14px;font-size:13px;border-radius:6px}
+body.profile-compact .member-current-portrait{width:64px;height:78px;margin:0 0 6px 14px}
+body.profile-compact .member-self-summary{min-height:0}
+body.profile-compact #member-profile-form>.member-panel{margin-bottom:0}
+body.profile-compact #member-profile-form .member-profile-note{margin:0 0 10px}
+body.profile-compact #member-profile-form .member-identity-facts{gap:5px 20px;padding:8px 0;margin:0 0 10px;font-size:13px;line-height:1.5;border-top:1px solid var(--portal-line);border-bottom:1px solid var(--portal-line)}
+body.profile-compact #member-profile-form .member-identity-fact{gap:5px}
+body.profile-compact #member-profile-form .member-avatar-editor{gap:12px;margin:0 0 12px}
+body.profile-compact #member-profile-form .member-avatar-editor .member-field{max-width:560px}
+body.profile-compact #member-profile-form .member-photo-preview{width:48px;height:60px;border-radius:5px}
+body.profile-compact #member-profile-form #member-basic-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.profile-compact #member-profile-form #member-more-fields{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}
+body.profile-compact #member-profile-form .member-field-item{position:relative;gap:4px}
+body.profile-compact #member-profile-form .member-field-item:has(.member-visibility) .member-field>span{padding-right:66px}
+body.profile-compact #member-profile-form .member-visibility{position:absolute;right:0;top:-5px;min-height:30px;padding:3px 10px;font-size:12px;line-height:1.5;border-radius:5px}
+body.profile-compact #member-profile-form .member-publish-actions{gap:8px;margin-top:0;padding:12px 0;border:0;border-bottom:1px solid var(--portal-line);background:transparent}
+body.profile-compact #member-save-state{flex-basis:100%;margin:0}
+body.profile-compact #member-save-state:empty{display:none}
+body.profile-compact .member-publish-notice{margin:0;flex-basis:100%;font-size:12px;color:var(--portal-muted);line-height:1.5}
+body.profile-compact .member-preview{margin:12px 0;padding:16px}
+body.profile-compact #member-profile-form :is(#member-basic-fields,#member-more-fields){scroll-margin-top:24px}
+@media(min-width:1100px){body.profile-compact .member-identity-facts{flex-wrap:nowrap}}
+@media(max-width:1000px){body.profile-compact .portal-dashboard-layout{grid-template-columns:140px minmax(0,1fr);gap:12px}body.profile-compact #member-profile-form #member-basic-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){
+ body.profile-compact .member-main{width:calc(100% - 24px)}
+ body.profile-compact .portal-dashboard-layout{grid-template-columns:minmax(0,1fr);gap:10px}
+ body.profile-compact .portal-editor-nav{padding:2px}
+ body.profile-compact .portal-editor-nav a{min-height:40px;padding:6px 9px}
+ body.profile-compact .member-panel{padding:12px;margin-bottom:10px}
+ body.profile-compact .member-panel h2{font-size:21px}
+ body.profile-compact .member-button{min-height:42px;padding:8px 12px}
+ body.profile-compact .member-form :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea){min-height:42px;font-size:16px}
+ body.profile-compact #member-profile-form #member-basic-fields,body.profile-compact #member-profile-form #member-more-fields{gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.profile-compact #member-profile-form .member-identity-facts{gap:4px 14px;font-size:12px}
+ body.profile-compact #member-profile-form .member-avatar-editor{gap:10px}
+ body.profile-compact #member-profile-form .member-avatar-editor input{font-size:13px}
+ body.profile-compact #member-profile-form .member-visibility{top:-6px;min-height:32px}
+ body.profile-compact #member-profile-form [data-key=bio],body.profile-compact #member-profile-form [data-key=interests],body.profile-compact #member-profile-form [data-key=publicContact]{grid-column:1/-1}
+ body.profile-compact #member-profile-form .member-publish-actions .member-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ body.profile-compact #member-profile-form .member-publish-actions .member-button{width:100%;min-width:0}
+}
+@media(max-width:360px){body.profile-compact #member-profile-form #member-basic-fields,body.profile-compact #member-profile-form #member-more-fields{grid-template-columns:minmax(0,1fr)}body.profile-compact #member-profile-form [data-key=bio],body.profile-compact #member-profile-form [data-key=publicContact]{grid-column:auto}}
