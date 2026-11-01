@@ -5,7 +5,6 @@ const motionQuery = matchMedia('(prefers-reduced-motion:reduce)');
 let storage;
 try { storage = window.localStorage; } catch { storage = {getItem(){throw Error('unavailable');},setItem(){throw Error('unavailable');}}; }
 let {state,persistent} = readState(storage);
-if (motionQuery.matches) state.motion = false;
 let lastTick = performance.now(),lastSaved = 0,feedbackUntil = 0,live = true;
 let visualAction = {name:'idle',start:performance.now(),duration:0};
 let model = null,drawRequest = 0,lastDraw = 0,renderCount = 0,yaw = 0,tilt = 0,drag = null,frameFailures = 0;
@@ -177,7 +176,7 @@ async function initializeModel() {
 document.querySelectorAll('[data-care]').forEach(button=>button.addEventListener('click',()=>care(button.dataset.care)));
 $('#cancel-session').addEventListener('click',()=>{state=cancelSession(state);setVisual('idle',0);$('#speech').textContent='随时回来，我都在这里';feedback('这次先停一停，未完成的陪读不计成长');persist();updateUI();});
 $('#motion').addEventListener('change',()=>{state={...state,motion:$('#motion').checked};persist();updateUI();if(drawRequest){cancelAnimationFrame(drawRequest);drawRequest=0;}requestDraw();});
-motionQuery.addEventListener('change',()=>{if(motionQuery.matches)state={...state,motion:false};updateUI();if(drawRequest){cancelAnimationFrame(drawRequest);drawRequest=0;}requestDraw();});
+motionQuery.addEventListener('change',()=>{updateUI();if(drawRequest){cancelAnimationFrame(drawRequest);drawRequest=0;}requestDraw();});
 $('#rotate-left').addEventListener('click',()=>{yaw-=Math.PI/6;requestDraw();});$('#rotate-right').addEventListener('click',()=>{yaw+=Math.PI/6;requestDraw();});$('#reset-view').addEventListener('click',()=>{yaw=0;tilt=0;requestDraw();});
 stage.addEventListener('keydown',event=>{
   if(event.target!==stage)return;

@@ -20,7 +20,8 @@ body.portal-home-v3 .portal-wall-invitation h2{font-size:clamp(25px,3.7vw,64px);
 .portal-wall-row{display:flex;width:max-content;animation:boyi-wall-scroll 54s linear infinite;will-change:transform}.portal-wall-row:nth-child(2n){animation-direction:reverse;animation-duration:62s}
 .portal-wall-run{display:flex;flex:none;gap:16px;padding-right:16px}.portal-photo-join .photo-wall .portal-wall-run img{display:block;width:clamp(240px,24vw,440px);height:auto;aspect-ratio:4/3;flex:none;object-fit:cover;animation:none;transform:none;border-radius:8px}
 @keyframes boyi-wall-scroll{to{transform:translateX(-50%)}}
-.portal-photo-join:is(.is-dragging,.is-paused,.is-offscreen,:hover,:focus-within) .portal-wall-row{animation-play-state:paused}
+.portal-photo-join:is(.is-dragging,.is-paused,.is-offscreen,:focus-within) .portal-wall-row{animation-play-state:paused}
+@media(hover:hover) and (pointer:fine){.portal-photo-join:hover .portal-wall-row{animation-play-state:paused}}
 .portal-contact{scroll-margin:100px}.portal-contact:focus{outline:2px solid #8d202c;outline-offset:8px}
 .portal-practice-cohort{position:absolute;top:30px;left:36px;z-index:2;font-size:clamp(18px,1.6vw,28px);font-weight:600;letter-spacing:.06em;color:white}
 .showcase-enhanced .portal-showcase:not(.is-seen) .showcase-copy{opacity:0;transform:translateY(36px)}.showcase-enhanced .portal-showcase .showcase-copy{transition:opacity .85s ease,transform .85s cubic-bezier(.16,1,.3,1)}
