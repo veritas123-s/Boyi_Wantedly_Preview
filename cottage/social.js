@@ -130,7 +130,13 @@ export function createSocialClient({THREE,scene,camera,player,getYaw,getMovement
    xhr.upload.onload=()=>{deadline(180000,'服务器校验课件超时，请重新读取投影或重试');onProgress({phase:'validate',loaded:file.size,total:file.size});};
    xhr.onerror=()=>finish(Error('课件上传连接中断，请检查网络后重试'));
    xhr.onabort=()=>finish(new DOMException('已取消上传','AbortError'));
-   xhr.onload=()=>{let value;try{value=JSON.parse(xhr.responseText);}catch{return finish(Error('服务器未返回课件结果，请重试'));}if(xhr.status<200||xhr.status>=300)return finish(Object.assign(Error(value.error||'这次课件未能分享，请重试'),{status:xhr.status,data:value}));finish(null,value);};
+   xhr.onload=()=>{
+    let value;try{value=JSON.parse(xhr.responseText);if(!value||typeof value!=='object'||Array.isArray(value))throw Error();}
+    catch{const message=xhr.status===413?'课件被上传入口拒收，请联系管理员（HTTP 413）':`课件服务未返回有效结果，请稍后重试（HTTP ${xhr.status}）`;return finish(Object.assign(Error(message),{status:xhr.status}));}
+    if(xhr.status<200||xhr.status>=300)return finish(Object.assign(Error(value.error||`这次课件未能分享（HTTP ${xhr.status}）`),{status:xhr.status,data:value}));
+    if(!value.self||!value.presentation)return finish(Object.assign(Error('课件结果不完整，请重新读取投影或重试'),{status:xhr.status}));
+    finish(null,value);
+   };
    signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted){cancel();return;}
    deadline(60000,'课件上传超过一分钟没有进展，请检查网络后重试');xhr.send(file);
   });
