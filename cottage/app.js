@@ -3,7 +3,7 @@ import {attachSocialPlay} from './social-play.js?v=074dcfdd22ab';
 import {createSocialClient} from './social.js?v=1dd4289a72ba';
 import {createAvatar,getAvatarMetrics} from './avatars.js?v=62a22527fc64';
 import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=4b76df09ef03';
-import {createCinemaPlayer} from './cinema-player.js?v=df34163ed0c0';
+import {createCinemaPlayer} from './cinema-player.js?v=492f74102865';
 import {createClassroomPlayer} from './classroom-player.js?v=6462e190b406';
 const $ = selector => document.querySelector(selector);
 const view=$('#room-view'),enter=$('#enter-room'),arrival=$('#arrival'),hud=$('#room-hud'),dialog=$('#room-dialog');
@@ -103,6 +103,15 @@ function syncClassroomPresentation(){
   if(active){const panel=document.getElementById('boyi-guide-panel'),inside=document.activeElement?.closest?.('#boyi-guide-widget');if(panel&&!panel.hidden)panel.querySelector('.guide-close')?.click();if(inside)$('#open-sprite').focus({preventScroll:true});}
  }
  if(reading!==readingClassroom){readingClassroom=reading;document.body.classList.toggle('classroom-reading',reading);}
+}
+function aimCinemaScreen(){
+ if(currentRoom!=='cinema')return;
+ const screen=world.root.getObjectByName('Cinema screen');
+ if(!screen)return;
+ screen.getWorldPosition(cameraTarget);
+ const dx=cameraTarget.x-player.x,dz=cameraTarget.z-player.z;
+ yaw=Math.atan2(-dx,-dz);pitch=Math.atan2(cameraTarget.y-eyeY(),Math.hypot(dx,dz));
+ freeYaw=freePitch=0;freeLookToggle=false;setViewMode(1);
 }
 function updateCamera(){
  if(!camera||!player||!world)return;syncClassroomPresentation();world.root.updateWorldMatrix(true,true);
@@ -270,7 +279,7 @@ async function start(){if(initializing||running)return;initializing=true;enter.d
   scene=new THREE.Scene();scene.background=new THREE.Color('#26333a');scene.fog=new THREE.Fog('#293133',18,65);camera=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.08,100);scene.add(camera);socialRoot=new THREE.Group();socialRoot.name='Current room participants';scene.add(socialRoot);hands=createFirstPersonHands(THREE,camera);raycaster=new THREE.Raycaster();cameraRay=new THREE.Raycaster();player=new THREE.Vector3();cameraTarget=new THREE.Vector3();cameraDesired=new THREE.Vector3();cameraDirection=new THREE.Vector3();companionCameraFrom=new THREE.Vector3();
   await loadTextures();await switchRoom('lobby');resize();world.update(0,0);
   await renderer.compileAsync(scene,roomRenderCamera());renderer.render(scene,roomRenderCamera());
-  statistics.backend=renderer.backend?.isWebGPUBackend?'webgpu':'webgl2';statistics.ready=true;Object.assign(statistics,world.stats);if(!directEntry){arrival.hidden=true;hud.hidden=false;}running=true;bindView();const socialPlayer={get x(){return player.x-roomOrigin().x;},get y(){return player.y-(roomOrigin().y||0);},get z(){return player.z-roomOrigin().z;}};social=createSocialClient({THREE,scene:socialRoot,camera,player:socialPlayer,quality,getSeatElevation:seatElevation,canSyncMovement:()=>!transitActive,getYaw:()=>yaw,getMovement:()=>({y:player.y-(roomOrigin().y||0),velocityX:physics.vx,velocityY:physics.vy,velocityZ:physics.vz,grounded:physics.grounded}),onSpawn:applySpawn,openPanel,closePanel,notice:notify,onRoomChange:switchRoom,onInteraction:e=>socialPlay?.onInteraction(e),onState:(data,occupants)=>{socialPlay?.apply(data);if(data.disconnected){cinemaPlayer?.clear();classroomPlayer?.clear();journalEditing=false;clearInterval(journalRenewTimer);renderJournal();}else{cinemaPlayer?.apply(data);if(currentRoom==='classroom')classroomPlayer?.apply(data.presentation);}world?.setOccupants?.(occupants);if(data.journal)updateJournal(data.journal);if(data.cinemaDoor){cinemaDoorOpen=!!data.cinemaDoor.open;for(const w of roomWorlds.values())w.setCinemaDoor?.(cinemaDoorOpen);}if(data.classroomDoor){classroomDoorOpen=!!data.classroomDoor.open;for(const w of roomWorlds.values())w.setClassroomDoor?.(classroomDoorOpen);}}});socialPlay=attachSocialPlay({getSocial:()=>social,notice:notify,openPanel,onCameraShake:shakeCamera});refreshKeyHints();cinemaPlayer=createCinemaPlayer({openPanel,closePanel,releaseLook,getSelf:()=>social.getSelf(),send:(route,body)=>social.send(route,body),notice:notify,setVideo:video=>roomWorlds.get('cinema')?.setVideo?.(video)});classroomPlayer=createClassroomPlayer({THREE,getSocial:()=>social,getWorld:id=>roomWorlds.get(id),openPanel,closePanel,notice:notify});schedule();
+  statistics.backend=renderer.backend?.isWebGPUBackend?'webgpu':'webgl2';statistics.ready=true;Object.assign(statistics,world.stats);if(!directEntry){arrival.hidden=true;hud.hidden=false;}running=true;bindView();const socialPlayer={get x(){return player.x-roomOrigin().x;},get y(){return player.y-(roomOrigin().y||0);},get z(){return player.z-roomOrigin().z;}};social=createSocialClient({THREE,scene:socialRoot,camera,player:socialPlayer,quality,getSeatElevation:seatElevation,canSyncMovement:()=>!transitActive,getYaw:()=>yaw,getMovement:()=>({y:player.y-(roomOrigin().y||0),velocityX:physics.vx,velocityY:physics.vy,velocityZ:physics.vz,grounded:physics.grounded}),onSpawn:applySpawn,openPanel,closePanel,notice:notify,onRoomChange:switchRoom,onInteraction:e=>socialPlay?.onInteraction(e),onState:(data,occupants)=>{socialPlay?.apply(data);if(data.disconnected){cinemaPlayer?.clear();classroomPlayer?.clear();journalEditing=false;clearInterval(journalRenewTimer);renderJournal();}else{cinemaPlayer?.apply(data);if(currentRoom==='classroom')classroomPlayer?.apply(data.presentation);}world?.setOccupants?.(occupants);if(data.journal)updateJournal(data.journal);if(data.cinemaDoor){cinemaDoorOpen=!!data.cinemaDoor.open;for(const w of roomWorlds.values())w.setCinemaDoor?.(cinemaDoorOpen);}if(data.classroomDoor){classroomDoorOpen=!!data.classroomDoor.open;for(const w of roomWorlds.values())w.setClassroomDoor?.(classroomDoorOpen);}}});socialPlay=attachSocialPlay({getSocial:()=>social,notice:notify,openPanel,onCameraShake:shakeCamera});refreshKeyHints();cinemaPlayer=createCinemaPlayer({openPanel,closePanel,releaseLook,aimScreen:aimCinemaScreen,getSelf:()=>social.getSelf(),send:(route,body)=>social.send(route,body),notice:notify,setVideo:video=>roomWorlds.get('cinema')?.setVideo?.(video)});classroomPlayer=createClassroomPlayer({THREE,getSocial:()=>social,getWorld:id=>roomWorlds.get(id),openPanel,closePanel,notice:notify});schedule();
   const joined=await social.join();
   if(joined)notify('会客大厅一楼 · 学员可走到电梯前按 '+bindings.label('interact')+' 前往二楼');
   arrival.hidden=true;hud.hidden=false;

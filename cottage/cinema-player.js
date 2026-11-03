@@ -1,9 +1,11 @@
 import {attachBilibiliBrowser,biliVideo} from './bilibili-browser.js?v=15f612630590';
 
-export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,closePanel,releaseLook}){
+export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,closePanel,releaseLook,aimScreen}){
  const $=s=>document.querySelector(s),video=$('#cinema-video'),status=$('#movie-status'),url=$('#movie-url'),seek=$('#movie-seek');
  const screen=$('#cinema-web-screen'),biliHost=$('#cinema-bili-player'),screenInput=$('#cinema-screen-input'),sound=$('#cinema-sound');
- const webMedia=$('#cinema-web-media');
+ const webMedia=$('#cinema-web-media'),panelScreen=$('#movie-panel-screen'),loading=$('#movie-loading'),progress=$('#movie-load-progress'),percent=$('#movie-load-percent');
+ let openScreenPending=false,loadTimer;
+ function setProgress(value){loading.hidden=value===null;if(value!==null){progress.value=value;percent.textContent=value+'%';}}
  let lastTransform='',lastClip='';
  const browser=attachBilibiliBrowser({openPanel,getSelf,send,notice});
  let movie=null,receivedAt=0,source='',active=false,flat=false,lastSync=0,bili=null,biliFrame=null,biliLoads=0,biliReady=false,projectedWorld=null,interacting=false,blocked=false,needsSound=false,playPending=false,mediaEpoch=0;
@@ -17,10 +19,11 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   if(biliFrame)biliFrame.tabIndex=interacting?0:-1;
  }
  screenInput.onclick=()=>setInteraction(!interacting);
+ panelScreen.onclick=()=>{if(!biliReady)return;closePanel();aimScreen();openScreenPending=true;};
  document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement)setInteraction(false);});
  function dismissControls(){if($('#room-dialog').open&&!$('[data-panel="cinema"]').hidden)closePanel();}
  function clearBili(){
-  setInteraction(false);
+  clearTimeout(loadTimer);openScreenPending=false;setInteraction(false);
   biliFrame?.remove();biliFrame=null;bili=null;biliReady=false;biliHost.hidden=true;video.hidden=false;
  }
  function showBili(next){
@@ -31,8 +34,13 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   frame.allow='autoplay; encrypted-media';
   frame.referrerPolicy='strict-origin-when-cross-origin';
   frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
-  frame.tabIndex=-1;frame.src=next.playerUrl;frame.onload=()=>{if(frame===biliFrame)biliReady=true;};
+  frame.tabIndex=-1;frame.src=next.playerUrl;frame.onload=()=>{
+   if(frame!==biliFrame)return;
+   clearTimeout(loadTimer);biliReady=true;setProgress(100);controls();
+   status.textContent='播放器页面已加载。点击“操作银幕”，再用 B 站播放器的播放按钮。';
+  };
   biliFrame=frame;biliLoads++;biliHost.append(frame);
+  loadTimer=setTimeout(()=>{status.textContent='播放器页面加载超时，可重新选择影片';},25000);
  }
  function controls(){
   const isHost=host();
@@ -41,6 +49,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   if(movie?.kind==='web')for(const id of ['movie-play','movie-pause','movie-seek'])$('#'+id).disabled=true;
   $('#movie-unlock').hidden=sound.hidden=!active||(!blocked&&!needsSound);
   screenInput.hidden=!active||!biliFrame||screen.hidden;
+  panelScreen.hidden=!biliFrame;panelScreen.disabled=!biliReady;
  }
  function targetTime(){return movie?movie.time+(movie.playing?(performance.now()-receivedAt)/1000:0):0;}
  async function play({withSound=false}={}){
@@ -73,7 +82,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   const seconds=Math.floor(video.currentTime||0);$('#movie-time').textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
  }
  function resetMedia(){
-  mediaEpoch++;playPending=false;blocked=needsSound=flat=false;
+  setProgress(null);mediaEpoch++;playPending=false;blocked=needsSound=flat=false;
   clearBili();projectedWorld?.projectWebMedia(null,0,0,false);projectedWorld=null;screen.hidden=true;
   video.pause();video.muted=false;
   if(video.hasAttribute('src')){video.removeAttribute('src');video.load();}
@@ -90,10 +99,10 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
    resetMedia();source=movie.url;
    if(movie.kind==='web'){
     const selected=biliVideo(source);
-    if(selected){showBili(selected);status.textContent='B站影片已投到银幕。请点“操作银幕”播放，完成后可继续走动。';if(host())dismissControls();}
+    if(selected){setProgress(50);status.textContent='正在加载 B 站播放器页面…';showBili(selected);}
     else status.textContent='房主已分享哔哩哔哩网页入口，可从放映控制打开。';
    }else if(source){
-    status.textContent='正在连接影片';video.crossOrigin='anonymous';video.src=source;video.load();
+    setProgress(50);status.textContent='正在连接影片';video.crossOrigin='anonymous';video.src=source;video.load();
    }else status.textContent='房主粘贴视频直链或 B站视频链接后，即可观看';
   }
   if(started&&host()&&movie.kind!=='web')dismissControls();
@@ -101,7 +110,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
  }
  video.addEventListener('loadeddata',()=>{
   if(!active||!source||movie?.kind==='web')return;
-  setVideo(flat?null:video);
+  setProgress(100);setVideo(flat?null:video);
   status.textContent=movie.playing?'正在同步放映':'影片已就绪，点击“播放”开始投影';
   sync(true);
  });
@@ -111,7 +120,19 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   else status.textContent='此链接暂时不能播放，请使用可直接打开的 MP4 或 WebM 视频';
  });
  video.addEventListener('ended',()=>{if(host())send('/media',{action:'pause'}).catch(e=>notice(e.message));});
- async function control(body){try{const data=await send('/media',body);if(data?.movie)apply(data);}catch(error){status.textContent=error.message;}}
+ async function control(body){
+  const retryBili=body.action==='load'&&source===body.url&&biliFrame&&!biliReady;
+  if(body.action==='load'){setProgress(0);status.textContent='正在提交片源…';}
+  try{
+   const data=await send('/media',body);if(data?.movie)apply(data);
+   if(retryBili&&data?.movie&&source===body.url&&!biliReady){
+    const selected=biliVideo(source);clearBili();showBili(selected);setProgress(50);controls();
+    status.textContent='正在重新加载 B 站播放器页面…';
+   }else if(body.action==='load'&&source===body.url&&(biliReady||video.readyState>=2)){
+    setProgress(100);status.textContent=biliReady?'播放器页面已加载，点击“操作银幕”。':'影片已就绪';
+   }
+  }catch(error){if(body.action==='load')setProgress(null);status.textContent=error.message;}
+ }
  $('#movie-form').onsubmit=e=>{e.preventDefault();const value=url.value.trim(),selected=biliVideo(value);let biliURL=false;try{biliURL=new URL(value).hostname.endsWith('.bilibili.com');}catch{}if(biliURL&&!selected){status.textContent='请选择具体的 B站 BV / av 视频链接；浏览首页或搜索请点“哔哩哔哩网页”';return;}control({action:'load',...(selected?{kind:'web'}:{}),url:selected?.url||value});};
  $('#movie-play').onclick=()=>control({action:'play'});$('#movie-pause').onclick=()=>control({action:'pause'});$('#movie-stop').onclick=()=>control({action:'stop'});
  seek.onchange=()=>control({action:'seek',time:Number(seek.value)});
@@ -125,6 +146,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
    screen.hidden=!projection;if(!projection)setInteraction(false);controls();
   }
   if(projection){
+   if(openScreenPending){openScreenPending=false;setInteraction(true);}
    const {x0,y0,cropWidth,cropHeight,clip}=projection;
    const crop=`${x0.toFixed(2)}/${y0.toFixed(2)}/${cropWidth.toFixed(2)}/${cropHeight.toFixed(2)}/${clip}`;
    if(lastClip!==crop){

@@ -80,3 +80,5 @@
 #room-view canvas{position:absolute;inset:0}
 .cinema-screen-input #room-view canvas{pointer-events:none}
 .cinema-screen-input #cinema-web-screen{pointer-events:auto}
+
+#movie-loading{margin:12px 0}#movie-load-progress{display:block;width:100%;margin-top:6px;accent-color:#8c2033}
