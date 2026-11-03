@@ -1,4 +1,4 @@
-import {createKeyBindings} from './controls.js?v=b1ebb83f5e84';
+import {createKeyBindings} from './controls.js?v=16d8f226cf8c';
 import {attachSocialPlay} from './social-play.js?v=074dcfdd22ab';
 import {createSocialClient} from './social.js?v=2c7dcf13c156';
 import {createAvatar,getAvatarMetrics} from './avatars.js?v=62a22527fc64';
@@ -16,6 +16,7 @@ let quality=getLocal('boyi-cottage-quality',coarse?'smooth':'balanced');if(!allo
 let THREE,renderer,scene,camera,world,raycaster,socialRoot,running=false,initializing=false,frameId=0,lastFrame=0,nextRender=0,elapsed=0,yaw=0,pitch=0,hover=null,lastFocus=null;
 let dragging=null,joy=null,joystick={x:0,z:0},fire=true,night=true,renderFailures=0,social,currentRoom='lobby',switching=null;
 let socialPlay=null,freeLookButton=null,freeLookToggle=false,freeYaw=0,freePitch=0,shakeUntil=0,shakeStarted=0,shakeDuration=0;
+let fairyHidden=getLocal('boyi-cottage-fairy-hidden')==='1';
 let presentingClassroom=false,readingClassroom=false,viewYaw=0,viewPitch=0;
 let cinemaPlayer=null,classroomPlayer=null,hands=null,standPending=false,transitActive=false,portalPending=false,cinemaDoorOpen=false,classroomDoorOpen=false,loadPercent=0,lastResolutionChange=0,resolutionScale=1;
 const preparedRooms=new Map();
@@ -45,7 +46,7 @@ const keys=new Set(),blockedKeys=new Set(),textures={},statistics={ready:false,f
 const titles={places:'屋内去处',shelf:'书架',desk:'书桌',sprite:'云伴精灵',guide:'小屋指南',settings:'设置',fire:'炉火',window:'星窗',people:'同屋的人',chat:'聊一聊',avatar:'我的形象',gate:'博医小屋',cinema:'放映室',classroom:'博医教室',roomchat:'同屋聊天',voice:'语音聊天',nickname:'给自己起个昵称',inventory:'背包',bilibili:'哔哩哔哩'};
 function clearInput(){freeLookToggle=false;freeYaw=freePitch=0;for(const key of keys)blockedKeys.add(key);keys.clear();joystick={x:0,z:0};joy=null;physics.touchJump=false;physics.jumpUntil=0;physics.vx=physics.vz=0;$('#joystick span').style.transform='';dragging=null;syncFreeLookButton();}
 const bindings=createKeyBindings({container:$('#key-bindings'),status:$('#key-binding-status'),reset:$('#reset-keys'),onChange:()=>{clearInput();refreshKeyHints();}});
-function refreshKeyHints(){const k=id=>bindings.label(id);freeLookButton?.setAttribute('aria-label','切换自由观察，按住 '+k('freeLook')+' 也可环顾');$('#open-inventory')?.setAttribute('aria-label','打开背包，'+k('inventory'));for(const row of document.querySelectorAll('.guide-list>div,.fixed-controls>div')){const title=row.querySelector('dt')?.textContent;if(title==='环顾'||title==='鼠标环顾')row.querySelector('dd').textContent='按住 '+k('freeLook')+' 自由观察，松开平滑回正；角色保持朝向。普通移动鼠标或拖动画面可转身，也可点“自由观察”后滑动';} document.querySelectorAll('[data-key]').forEach(el=>el.textContent=k(el.dataset.key));for(const[id,action,title]of[['jump-action','jump','跳跃'],['wave-action','wave','打招呼'],['stand-up','stand','起身'],['drop-item','drop','放回物品'],['open-sprite','companion','呼唤云伴'],['mobile-interact','interact','与前方物品互动']])$('#'+id).setAttribute('aria-label',title+'，'+k(action));$('#guide-move').textContent=`电脑：${k('forward')} 向前，${k('backward')} 向后，${k('left')} 向左，${k('right')} 向右；${k('run')} 加快走动。手机拖动左下角圆盘`;$('#guide-interact').textContent=`靠近物品、房门或电梯，按 ${k('interact')} 或点“互动”`;$('#guide-companion').textContent=`按 ${k('companion')} 或点“云伴”提问；按 ${k('hideGuide')} 隐藏或召回悬浮云伴`;$('#guide-views').textContent=`${k('view1')} 第一人称；${k('view2')} 第二人称，从云伴看向自己；${k('view3')} 第三人称。也可点击视角按钮`;$('#guide-actions').textContent=`${k('jump')} 跳跃（按住可连跳），${k('wave')} 招手；靠近椅子按 ${k('interact')} 入座，${k('stand')} 或走动起身；靠近书或杯子按 ${k('interact')} 拿取，${k('drop')} 放回`;$('#guide-cinema').textContent=`先从大厅乘电梯到二楼小屋，找到放映室门，按 ${k('interact')} 开门后走进去，选个沙发座位；房主粘贴视频直链并控制播放，其他人同步观看。点“语音”或“同屋聊天”交流。也可粘贴B站视频链接，在放映室完整银幕观看；同屋共享视频和分P，各自控制进度与声音。哔哩哔哩网页入口保留浏览、搜索`;}
+function refreshKeyHints(){const k=id=>bindings.label(id);freeLookButton?.setAttribute('aria-label','切换自由观察，按住 '+k('freeLook')+' 也可环顾');$('#open-inventory')?.setAttribute('aria-label','打开背包，'+k('inventory'));for(const row of document.querySelectorAll('.guide-list>div,.fixed-controls>div')){const title=row.querySelector('dt')?.textContent;if(title==='环顾'||title==='鼠标环顾')row.querySelector('dd').textContent='按住 '+k('freeLook')+' 自由观察，松开平滑回正；角色保持朝向。普通移动鼠标或拖动画面可转身，也可点“自由观察”后滑动';} document.querySelectorAll('[data-key]').forEach(el=>el.textContent=k(el.dataset.key));for(const[id,action,title]of[['jump-action','jump','跳跃'],['wave-action','wave','打招呼'],['stand-up','stand','起身'],['drop-item','drop','放回物品'],['open-sprite','companion','呼唤云伴'],['mobile-interact','interact','与前方物品互动']])$('#'+id).setAttribute('aria-label',title+'，'+k(action));$('#guide-move').textContent=`电脑：${k('forward')} 向前，${k('backward')} 向后，${k('left')} 向左，${k('right')} 向右；${k('run')} 加快走动。手机拖动左下角圆盘`;$('#guide-interact').textContent=`靠近物品、房门或电梯，按 ${k('interact')} 或点“互动”`;$('#guide-companion').textContent=`按 ${k('companion')} 或点“云伴”提问；按 ${k('hideGuide')} 隐藏或召回场景里的小精灵`;$('#guide-views').textContent=`${k('view1')} 第一人称；${k('view2')} 第二人称，从云伴看向自己；${k('view3')} 第三人称。也可点击视角按钮`;$('#guide-actions').textContent=`${k('jump')} 跳跃（按住可连跳），${k('wave')} 招手；靠近椅子按 ${k('interact')} 入座，${k('stand')} 或走动起身；靠近书或杯子按 ${k('interact')} 拿取，${k('drop')} 放回`;$('#guide-cinema').textContent=`先从大厅乘电梯到二楼小屋，找到放映室门，按 ${k('interact')} 开门后走进去，选个沙发座位；房主粘贴视频直链并控制播放，其他人同步观看。点“语音”或“同屋聊天”交流。也可粘贴B站视频链接，在放映室完整银幕观看；同屋共享视频和分P，各自控制进度与声音。哔哩哔哩网页入口保留浏览、搜索`;}
 refreshKeyHints();
 function freeLooking(){return freeLookToggle||bindings.isHeld('freeLook',keys);}
 function syncFreeLookButton(){if(!freeLookButton)return;const active=freeLookToggle||bindings?.isHeld('freeLook',keys);const pressed=String(!!active),label=active?'观察中 · 点此回正':'自由观察';if(freeLookButton.getAttribute('aria-pressed')!==pressed)freeLookButton.setAttribute('aria-pressed',pressed);if(freeLookButton.textContent!==label)freeLookButton.textContent=label;}
@@ -139,8 +140,21 @@ function syncClassroomPresentation(){
  }
  if(reading!==readingClassroom){readingClassroom=reading;document.body.classList.toggle('classroom-reading',reading);}
 }
+const fairyToggle=$('#toggle-scene-fairy');
+function syncFairyToggle(){
+ fairyToggle.setAttribute('aria-pressed',String(fairyHidden));
+}
+function toggleSceneFairy(){
+ fairyHidden=!fairyHidden;
+ setLocal('boyi-cottage-fairy-hidden',fairyHidden?'1':'0');
+ syncFairyToggle();
+ updateCamera();
+}
+fairyToggle.onclick=toggleSceneFairy;
+syncFairyToggle();
 function updateCamera(dt=Infinity){
  if(!camera||!player||!world)return;syncClassroomPresentation();
+ for(const w of renderedWorlds)if(w.appFairy)w.appFairy.visible=!fairyHidden&&w===world&&viewMode!==2&&!presentingClassroom;
  if(currentRoom==='cinema'&&cinemaPlayer?.isInteracting()){
   const screen=world.root.getObjectByName('Cinema screen');
   screen.getWorldPosition(cameraTarget);
@@ -158,7 +172,6 @@ function updateCamera(dt=Infinity){
  const delta=Math.atan2(Math.sin(yawTarget-viewYaw),Math.cos(yawTarget-viewYaw));
  viewYaw+=delta*blend;viewPitch+=(pitchTarget-viewPitch)*blend;
  const lookYaw=viewYaw,lookPitch=viewPitch,fairy=world.appFairy,small=social?.getSelf()?.avatarId==='naidan',m=currentAvatarMetrics(),pose=framePose||social?.getPose(),seat=pose?.seatId?(pose.seatHeight||.55):0,centre=small?seat+m.height*.6:1.06;
- for(const w of renderedWorlds)if(w.appFairy)w.appFairy.visible=w===world&&viewMode!==2&&!(currentRoom==='classroom'&&presentingClassroom);
  const baseY=player.y+seatElevation(pose);
  if(viewMode===1){camera.position.set(player.x,eyeY(),player.z);camera.rotation.set(lookPitch,lookYaw,0,'YXZ');}
  else{
@@ -264,7 +277,7 @@ function tryWalkingPortal(){
   portalPending=true;seamlessTransfer={target:c.target,from:currentRoom};const before={x:player.x,y:player.y,z:player.z};social.enterRoom(c.target).then(ok=>{if(!ok){player.set(before.x,before.y,before.z);resetPhysics();seamlessTransfer=null;}else statistics.seamlessCrossings=(statistics.seamlessCrossings||0)+1;}).catch(()=>{player.set(before.x,before.y,before.z);resetPhysics();seamlessTransfer=null;}).finally(()=>portalPending=false);return;
  }
 }
-function pick(){if(viewMode===1)raycaster.setFromCamera(screenCentre,camera);else{const lookYaw=viewYaw,lookPitch=viewPitch;cameraTarget.set(player.x,eyeY(),player.z);cameraDirection.set(-Math.sin(lookYaw)*Math.cos(lookPitch),Math.sin(lookPitch),-Math.cos(lookYaw)*Math.cos(lookPitch));raycaster.set(cameraTarget,cameraDirection);}let picked=null,distance=3.4;for(const item of currentInteractables){if(item.id==='sprite'&&(viewMode===2||presentingClassroom))continue;pickHits.length=0;raycaster.intersectObject(item.object,true,pickHits);if(pickHits[0]&&pickHits[0].distance<distance){distance=pickHits[0].distance;picked=item;}}const person=social?.pick(raycaster);if(person){personHover.person=person;personHover.label='和'+person.nickname+'聊聊';picked=personHover;}hover=picked;setHidden(actionHud.interact,!picked);if(picked&&interactLabel.textContent!==picked.label)interactLabel.textContent=picked.label;if(actionHud.mobile.disabled!==!picked)actionHud.mobile.disabled=!picked;}
+function pick(){if(viewMode===1)raycaster.setFromCamera(screenCentre,camera);else{const lookYaw=viewYaw,lookPitch=viewPitch;cameraTarget.set(player.x,eyeY(),player.z);cameraDirection.set(-Math.sin(lookYaw)*Math.cos(lookPitch),Math.sin(lookPitch),-Math.cos(lookYaw)*Math.cos(lookPitch));raycaster.set(cameraTarget,cameraDirection);}let picked=null,distance=3.4;for(const item of currentInteractables){if(item.id==='sprite'&&(fairyHidden||viewMode===2||presentingClassroom))continue;pickHits.length=0;raycaster.intersectObject(item.object,true,pickHits);if(pickHits[0]&&pickHits[0].distance<distance){distance=pickHits[0].distance;picked=item;}}const person=social?.pick(raycaster);if(person){personHover.person=person;personHover.label='和'+person.nickname+'聊聊';picked=personHover;}hover=picked;setHidden(actionHud.interact,!picked);if(picked&&interactLabel.textContent!==picked.label)interactLabel.textContent=picked.label;if(actionHud.mobile.disabled!==!picked)actionHud.mobile.disabled=!picked;}
 function interact(){if(transitActive||switching||!hover||dialog.open)return;if(hover.person){social?.openChat(hover.person);return;}if(hover.id==='seat'){social?.action('sit',hover.seatId);return;}if(hover.id==='item'){social?.action('pickup',hover.itemId);return;}if(hover.id==='elevator'||hover.id==='elevator-return'){rideElevator(currentRoom==='lobby'?'cottage':'lobby');return;}if(hover.id==='cinema-door-toggle'){social?.toggleCinemaDoor();return;}if(hover.id==='classroom-door-toggle'){social?.toggleClassroomDoor?.();return;}openPanel(hover.id,$('#interact'));}
 function setLoad(value,label){loadPercent=Math.max(loadPercent,Math.min(100,Math.round(value)));$('#transit-label').textContent=label;$('#transit-percent').textContent=loadPercent+'%';$('#transit-progress').value=loadPercent;statistics.loading={percent:loadPercent,label};}
 function tween(duration,step){return new Promise(resolve=>{const begin=performance.now();function tick(now){const p=Math.min(1,(now-begin)/duration);step(p*p*(3-2*p));if(p<1)requestAnimationFrame(tick);else resolve();}requestAnimationFrame(tick);});}
@@ -347,7 +360,7 @@ async function warmConnectedViews(room){
  for(const w of roomWorlds.values())if(w.root.visible)w.root.traverse(object=>{if(object.isMesh&&object.frustumCulled){culling.push(object);object.frustumCulled=false;}});
  if(ownAvatar){ownAvatar.root.visible=true;ownAvatar.root.traverse(object=>{if(object.isMesh&&object.frustumCulled){culling.push(object);object.frustumCulled=false;}});}
  try{for(const id of connectedRooms){if(warmedRoomViews.has(id))continue;const candidate=roomWorlds.get(id);if(!candidate)continue;const timing={compileMs:0,renderMs:0,totalMs:0},begin=performance.now();(statistics.roomWarmups??={})[id]=timing;
-  for(const w of roomWorlds.values()){w.setCompanionActive?.(w===candidate);if(w.appFairy)w.appFairy.visible=w===candidate&&viewMode!==2;}
+  for(const w of roomWorlds.values()){w.setCompanionActive?.(w===candidate);if(w.appFairy)w.appFairy.visible=!fairyHidden&&w===candidate&&viewMode!==2;}
   const compiled=performance.now();await renderer.compileAsync(scene,roomRenderCamera(id,true));timing.compileMs=performance.now()-compiled;timing.totalMs=performance.now()-begin;warmedRoomViews.add(id);
   await new Promise(resolve=>requestAnimationFrame(resolve));
  }}finally{for(const object of culling)object.frustumCulled=true;for(const[id,w]of roomWorlds){w.root.visible=currentRoom==='lobby'?id==='lobby':id!=='lobby';w.setCompanionActive?.(w===world);}if(ownAvatar)ownAvatar.root.visible=avatarVisible;preparingViews=false;updateCamera();}
@@ -385,7 +398,7 @@ function performInput(code,repeat=false){
  const action=bindings.actionFor(code);if(!action||!canLook()||blockedKeys.has(code))return false;
  if(['forward','backward','left','right','run','freeLook','jump'].includes(action)){if(cinemaPlayer?.isInteracting())cinemaPlayer.finishInteraction();keys.add(code);if(action==='jump'&&!repeat)queueJump();syncFreeLookButton();return true;}
  if(repeat)return true;
- if(action==='hideGuide'){window.dispatchEvent(new Event('boyi:toggle-guide-visibility'));return true;}
+ if(action==='hideGuide'){toggleSceneFairy();return true;}
  if(action==='inventory'){socialPlay?.openInventory();return true;}
  if(action==='companion'){summonSprite($('#open-sprite'));return true;}
  if(action==='interact'){interact();return true;}

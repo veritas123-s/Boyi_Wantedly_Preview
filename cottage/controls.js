@@ -4,7 +4,7 @@ const definitions=[
  ['run','加快走动',['KeyF']],['interact','物品、房门与电梯互动',['KeyE']],
  ['companion','呼唤云伴',['KeyR']],['jump','跳跃（按住连跳）',['Space']],['wave','打招呼',['KeyH']],
  ['stand','起身',['KeyX']],['drop','放回物品',['KeyG']],
- ['freeLook','自由观察（按住）',['ShiftLeft','ShiftRight']],['hideGuide','隐藏或召回博医云伴',['KeyV']],['inventory','打开背包',['KeyB']],
+ ['freeLook','自由观察（按住）',['ShiftLeft','ShiftRight']],['hideGuide','隐藏或召回场景小精灵',['KeyV']],['inventory','打开背包',['KeyB']],
  ['view1','第一人称',['Digit1','Numpad1']],['view2','第二人称',['Digit2','Numpad2']],['view3','第三人称',['Digit3','Numpad3']]
 ];
 const storageKey='boyi-cottage-keys-v1';
