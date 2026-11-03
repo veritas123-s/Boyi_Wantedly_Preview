@@ -39,7 +39,7 @@ export function createLobbyScene(THREE, scene, {textures={},quality='balanced',r
   function beam(owner,a,b,w,mat,h=w){const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b),delta=to.clone().sub(from),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),delta.clone().normalize());const key=owner.uuid+box.uuid+mat.uuid;if(!batches.has(key))batches.set(key,{owner,g:box,m:mat,entries:[]});temporary.position.copy(from.add(to).multiplyScalar(.5));temporary.quaternion.copy(q);temporary.scale.set(w,h,delta.length());temporary.updateMatrix();batches.get(key).entries.push({matrix:temporary.matrix.clone(),tint:null});}
   function rounded(w,h,d,r=.035){const x=-w/2,y=-h/2,s=new THREE.Shape();s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);const g=G(new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:true,bevelSegments:2,bevelSize:r*.35,bevelThickness:r*.35,steps:1,curveSegments:4}));g.translate(0,0,-d/2);return g;}
   function arch(w,bottom,shoulder){const s=new THREE.Shape(),r=w/2;s.moveTo(-r,bottom);s.lineTo(r,bottom);s.lineTo(r,shoulder);s.absarc(0,shoulder,r,0,Math.PI,false);s.lineTo(-r,bottom);return s;}
-  function collider(x,z,w,d,maxY=Infinity,id='hall-solid-'+colliders.length){colliders.push({id,minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,minY:0,maxY});}
+  function collider(x,z,w,d,maxY=Infinity,id='hall-solid-'+colliders.length,minY=0){colliders.push({id,minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,minY,maxY});}
   function interact(id,label,object,point){object.userData.interactionId=id;interactables.push({id,label,object,point:new THREE.Vector3(...point)});}
 
   const architecture=group('Hall masonry and panelled oak');
@@ -63,6 +63,13 @@ export function createLobbyScene(THREE, scene, {textures={},quality='balanced',r
       if(!windowOpening(z,y))B(architecture,stone,6.02,y,(a+b)/2,.29,.31,b-a,[0,0,0],tint);
     }
   }
+  for(const side of [-1,1]){
+    collider(side*6.02,0,.29,14.3,5.36,'hall-side-wall-'+side);
+    collider(side*5.79,0,.19,14.12,1.08,'hall-wall-panel-'+side);
+    for(const z of [-6.7,-1.9,5.7])collider(side*5.69,z,.42,.61,.28,'hall-column-foot-'+side+'-'+z,.10);
+  }
+  collider(0,7.02,12.3,.29,5.36,'hall-back-wall');
+  for(const side of [-1,1])collider(side*3.68,-7.02,4.94,.29,5.36,'hall-lift-side-wall-'+side);
   // Lower panelling, mouldings, fluted half-columns and carved capitals.
   for(const sign of [-1,1]){
     B(architecture,darkWood,sign*5.79,.54,0,.19,1.08,14.12);
@@ -115,19 +122,19 @@ export function createLobbyScene(THREE, scene, {textures={},quality='balanced',r
   const liftDisplay=mesh(lift,G(new THREE.PlaneGeometry(1.30,.405)),basic({map:liftDisplayTexture,toneMapped:false}),[0,3.50,.095]);
   const callButton=group('Lift call button',lift,[1.52,1.27,.07]);mesh(callButton,rounded(.28,.59,.045,.035),brass);C(callButton,iron,0,0,.044,.076,.018,[Math.PI/2,0,0]);
   const buttonGlow=basic({color:0xffdda0});mesh(callButton,G(new THREE.CircleGeometry(.047,24)),buttonGlow,[0,0,.061]);
-  const liftDoorBlockers=liftLeaves.map(({side})=>{const c={minX:side*.535-.5275,maxX:side*.535+.5275,minZ:-6.00,maxZ:-5.90};colliders.push(c);return c;});
+  const liftDoorBlockers=liftLeaves.map(({side})=>{const c={id:'hall-lift-leaf-'+side,minX:side*.535-.53625,maxX:side*.535+.53625,minZ:-5.997,maxZ:-5.883,minY:.011,maxY:2.929};colliders.push(c);return c;});
   const liftNeedle=group('Mechanical floor indicator needle',lift,[0,3.405,.15]);mesh(liftNeedle,box,brass,[0,.115,0],[.018,.23,.022]);S(liftNeedle,brass,0,0,.006,.042,.042,.014);
   for(const side of [-1,1])for(const y of [.22,.63,1.04,1.85,2.29,2.75])S(lift,brass,side*1.14,y,.183,.022,.022,.009);
   for(const {leaf}of liftLeaves)for(const y of [1.17,1.75])for(const sign of [-1,1])for(const x of [-.13,.13])B(leaf,iron,x,y,.078,.015,.78,.016,[0,0,sign*.66]);
   const liftBulb=mesh(lift,sphere,basic({color:0xffd298,toneMapped:false}),[0,2.9,-.45],[.065,.11,.065]);liftBulb.castShadow=false;C(lift,iron,0,3.035,-.45,.052,.1);B(lift,brass,0,3.10,-.45,.24,.035,.24);
   const liftState={floor:1,moving:false,doors:0};
   function paintLiftDisplay(){const c=liftDisplayCanvas.getContext('2d');c.fillStyle='#c5b28a';c.fillRect(0,0,512,160);c.strokeStyle='#51402b';c.lineWidth=6;c.strokeRect(5,5,502,150);c.lineWidth=1.5;c.strokeRect(15,15,482,130);c.strokeStyle='#6c5633';c.beginPath();c.ellipse(256,142,137,115,Math.PI,0,Math.PI);c.stroke();for(let i=0;i<11;i++){const a=Math.PI+(i/10)*Math.PI;c.beginPath();c.moveTo(256+Math.cos(a)*126,142+Math.sin(a)*105);c.lineTo(256+Math.cos(a)*(i%5?120:112),142+Math.sin(a)*(i%5?99:92));c.stroke();}c.fillStyle='#3e3024';c.textAlign='center';c.textBaseline='middle';c.font='600 34px "KaiTi","Microsoft YaHei",serif';c.fillText('一',135,60);c.fillText('二',377,60);c.font='18px "KaiTi","Microsoft YaHei",serif';c.fillText('楼  层',256,41);c.font='17px Georgia,serif';c.fillText('BOYI  ·  LIFT',256,134);liftNeedle.rotation.z=liftState.moving?0:liftState.floor===1?.72:-.72;liftDisplayTexture.needsUpdate=true;}
-  function setElevatorState(next={}){const before=`${liftState.floor}/${liftState.moving}`;if(Number.isFinite(next.doors))liftState.doors=Math.max(0,Math.min(1,next.doors));if(next.floor===1||next.floor===2)liftState.floor=next.floor;if(typeof next.moving==='boolean')liftState.moving=next.moving;for(let i=0;i<liftLeaves.length;i++){const {leaf,side}=liftLeaves[i];leaf.position.x=side*(.535+liftState.doors*1.025);liftDoorBlockers[i].minX=leaf.position.x-.5275;liftDoorBlockers[i].maxX=leaf.position.x+.5275;}if(before!==`${liftState.floor}/${liftState.moving}`)paintLiftDisplay();}
+  function setElevatorState(next={}){const before=`${liftState.floor}/${liftState.moving}`;if(Number.isFinite(next.doors))liftState.doors=Math.max(0,Math.min(1,next.doors));if(next.floor===1||next.floor===2)liftState.floor=next.floor;if(typeof next.moving==='boolean')liftState.moving=next.moving;for(let i=0;i<liftLeaves.length;i++){const {leaf,side}=liftLeaves[i];leaf.position.x=side*(.535+liftState.doors*1.025);liftDoorBlockers[i].minX=leaf.position.x-.53625;liftDoorBlockers[i].maxX=leaf.position.x+.53625;}if(before!==`${liftState.floor}/${liftState.moving}`)paintLiftDisplay();}
   paintLiftDisplay();
   interact('elevator','乘电梯到二楼',callButton,[1.52,1.27,-5.88]);
   interact('elevator','乘电梯到二楼',liftLeaves[0].leaf,[0,1.47,-5.95]);
   interact('elevator','乘电梯到二楼',liftLeaves[1].leaf,[0,1.47,-5.95]);
-  collider(-1.18,-6.45,.2,1.04);collider(1.18,-6.45,.2,1.04);
+  for(const side of [-1,1])collider(side*1.17,-6.43,.13,1.12,3.2,'hall-lift-cabin-wall-'+side);
   const elevator={entry:{x:0,z:-4.75,yaw:0},cabin:{x:0,z:-6.4,yaw:Math.PI}};
 
   // Actual supplied emblems: clearly visible at arrival, never reconstructed.
@@ -178,9 +185,13 @@ export function createLobbyScene(THREE, scene, {textures={},quality='balanced',r
   for(const side of [-1,1])for(const z of [-1.36,1.34]){
     const chair=group('Meeting chair',root,[-2.4+side*1.5,0,z+.12],[0,side>0?-Math.PI/2:Math.PI/2,0]);batch(chair,seatGeometry,wood,[0,.49,0]);batch(chair,seatGeometry,leather,[0,.55,.02],[.9,.6,.9]);batch(chair,seatBack,leather,[0,1.02,-.28]);
     for(const x of [-.26,.26])for(const zz of [-.26,.26])B(chair,wood,x,.25,zz,.065,.5,.065);for(const x of [-.28,.28])B(chair,wood,x,1.03,-.29,.065,.95,.065);
-    collider(-2.4+side*1.5,z+.12,.83,.7,.59,'hall-chair-seat-'+side+'-'+z);
+    const x=-2.4+side*1.5;
+    collider(x,z+.12,.685,.685,.589,'hall-chair-seat-'+side+'-'+z);
+    collider(x+side*.28,z+.12,.117,.612,1.40,'hall-chair-back-'+side+'-'+z,.658);
   }
-  collider(-2.4,.12,2.2,4.6,1.04,'hall-reading-table');
+  collider(-2.4,.12,2.13,4.5,1.043,'hall-reading-table-top',.8225);
+  for(const x of [-.76,.76])for(const z of [-1.8,1.8])collider(-2.4+x,.12+z,.26,.26,.88,'hall-reading-table-leg-'+x+'-'+z);
+  collider(-2.4,.12,.1,3.68,.46,'hall-reading-table-brace',.34);
   const journalTexture=canvasTexture(1024,(c,s)=>{c.fillStyle='#d4c8a9';c.fillRect(0,0,s,s);c.strokeStyle='#7a7156';c.lineWidth=2;c.strokeRect(52,52,s-104,s-104);c.fillStyle='#4c4636';c.font='58px "KaiTi", "Microsoft YaHei", serif';c.textAlign='center';c.fillText('在这里，相遇与交谈',s/2,160);for(let r=0;r<20;r++){let x=95;while(x<930){const w=range(15,60);c.fillStyle='rgba(66,57,37,.5)';c.fillRect(x,225+r*29,w,2);x+=w+range(10,20);}}});
   const journalMaterial=standard({map:journalTexture,roughness:.96,side:THREE.DoubleSide});
   for(const z of [-1.26,1.2]){
@@ -199,13 +210,16 @@ export function createLobbyScene(THREE, scene, {textures={},quality='balanced',r
     for(const x of [-.55,.55]){batch(chair,arm,wood,[x,.85,0]);for(const zz of [-.31,.32])B(chair,wood,x,.66,zz,.065,.36,.065);}
     for(const x of [-.38,.38])for(const zz of [-.34,.34])B(chair,wood,x,.15,zz,.08,.3,.08);
     for(const x of [-.26,0,.26])for(const y of [.98,1.2])S(chair,brass,x,y,-.235,.015,.015,.007);
-    collider(3.87,z,1.39,1.48,.66,'hall-lounge-seat-'+z);
+    collider(3.87,z,.98,1.05,.672,'hall-lounge-seat-'+z);
+    collider(4.22,z,.34,.993,1.56,'hall-lounge-back-'+z,.55);
+    for(const side of [-1,1])collider(3.87,z+side*.55,1,.22,.955,'hall-lounge-arm-'+side+'-'+z,.48);
   }
   const sideTable=group('Round tea table',lounge,[3.5,0,.2]);C(sideTable,wood,0,.61,0,.61,.1);C(sideTable,trim,0,.668,0,.63,.025);C(sideTable,wood,0,.33,0,.07,.55);
   for(let i=0;i<3;i++){const a=i*Math.PI*2/3;beam(sideTable,[0,.22,0],[Math.cos(a)*.43,.04,Math.sin(a)*.43],.055,wood);}
   const ceramic=standard({color:0xb4c2bd,roughness:.27,metalness:.08});C(sideTable,ceramic,-.2,.7,.1,.13,.025);C(sideTable,ceramic,-.2,.77,.1,.064,.13);batch(sideTable,ring,ceramic,[-.12,.79,.1],[.04,.04,.04],[0,Math.PI/2,0]);
   C(sideTable,ivory,.16,.69,-.13,.14,.015);logo(textures.schoolLogo,sideTable,[.16,.702,-.13],.23,.23,[-Math.PI/2,0,0]);
-  collider(3.5,.2,1.3,1.3,.69,'hall-tea-table');
+  collider(3.5,.2,1.26,1.26,.681,'hall-tea-table-top',.56);
+  collider(3.5,.2,.14,.14,.605,'hall-tea-table-stem',.055);
 
   // Original scientific drawings, double frames and restrained wall ornament.
   for(const z of [-5.2,4.82]){

@@ -19,7 +19,7 @@ export function attachRoomActions(THREE,world,room){
    const frame=new THREE.Group();frame.name=label+' shared doorway';frame.position.set(x,0,z);frame.rotation.y=rotation;root.add(frame);
    const hinge=new THREE.Group();hinge.name=label+' single hinged leaf';hinge.position.x=-.8;frame.add(hinge);
    const leaf=mesh(new THREE.BoxGeometry(1.6,3.05,.10),leather,hinge);leaf.position.set(.8,1.525,0);leaf.receiveShadow=true;
-   for(const side of[-1,1]){const jamb=mesh(new THREE.BoxGeometry(.14,3.2,.30),gold,frame);jamb.position.set(side*.88,1.6,0);}
+   for(const side of[-1,1]){const jamb=mesh(new THREE.BoxGeometry(.14,3.2,.30),gold,frame);jamb.position.set(side*.88,1.6,0);world.colliders.push({id:kind+'-door-jamb-'+side,space:'world',minX:x-.15,maxX:x+.15,minZ:z+side*.88-.07,maxZ:z+side*.88+.07,minY:0,maxY:3.2});}
    const header=mesh(new THREE.BoxGeometry(1.9,.14,.30),gold,frame);header.position.y=3.2;
    for(const xx of[.085,1.515]){const mould=mesh(new THREE.BoxGeometry(.025,2.78,.028),gold,hinge);mould.position.set(xx,1.53,.065);}
    for(const yy of[.18,.78,2.17,2.88]){const mould=mesh(new THREE.BoxGeometry(1.44,.026,.025),gold,hinge);mould.position.set(.8,yy,.065);}
@@ -33,9 +33,9 @@ export function attachRoomActions(THREE,world,room){
    const interaction={id:kind+'-door-toggle',label:'打开'+label+'的门',object:hinge,space:'world',point:new THREE.Vector3(x,1.3,z)};world.interactables.push(interaction);
    const corners=Array.from({length:4},()=>new THREE.Vector3());let open=false,angle=0,initialized=false;
    function pose(){hinge.rotation.y=angle;hinge.updateWorldMatrix(true,true);for(let i=0;i<segments.length;i++){const c=segments[i];c.minX=c.minZ=Infinity;c.maxX=c.maxZ=-Infinity;let n=0;for(const xx of[i*.2,(i+1)*.2])for(const zz of[-.055,.055]){const v=corners[n++].set(xx,.1,zz);hinge.localToWorld(v);c.minX=Math.min(c.minX,v.x);c.maxX=Math.max(c.maxX,v.x);c.minZ=Math.min(c.minZ,v.z);c.maxZ=Math.max(c.maxZ,v.z);}}interaction.point.set(1.37,1.18,.13);hinge.localToWorld(interaction.point);}
-   function setOpen(value){open=Boolean(value);interaction.label=(open?'关闭':'打开')+label+'的门';if(!initialized){initialized=true;angle=open?-Math.PI/2:0;pose();}}
+   function setOpen(value){open=Boolean(value);interaction.label=(open?'关闭':'打开')+label+'的门';if(!initialized){initialized=true;angle=open?Math.PI/2:0;pose();}}
    world[kind==='cinema'?'setCinemaDoor':'setClassroomDoor']=setOpen;
-   const api={target,isPortal(p){return open&&angle<-.98&&p&&Math.abs(p.x-x)<.4&&Math.abs(p.z-z)<.8;},update(dt){const targetAngle=open?-Math.PI/2:0;if(Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-Math.max(0,Math.min(.05,dt||0))*8.5));if(Math.abs(targetAngle-angle)<.001)angle=targetAngle;pose();}}};doors.push(api);pose();
+   const api={target,isPortal(p){return open&&angle>.98&&p&&Math.abs(p.x-x)<.4&&Math.abs(p.z-z)<.8;},update(dt){const targetAngle=open?Math.PI/2:0;if(Math.abs(targetAngle-angle)>.001){angle+=(targetAngle-angle)*(1-Math.exp(-Math.max(0,Math.min(.05,dt||0))*8.5));if(Math.abs(targetAngle-angle)<.001)angle=targetAngle;pose();}}};doors.push(api);pose();
   }
   addPortalDoor({kind:'cinema',label:'博医放映室',x:6,z:2.6,rotation:-Math.PI/2,target:'cinema'});
   addPortalDoor({kind:'classroom',label:'博医教室',x:-24,z:4.8,rotation:Math.PI/2,target:'classroom'});

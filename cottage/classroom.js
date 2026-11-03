@@ -22,7 +22,7 @@ export function createClassroomScene(THREE,scene,{textures={},quality='balanced'
  for(const z of [-7.5,7.5]){B(wall,0,3,z,15.6,6,.25);collider('classroom-wall-'+z,0,z,15.6,.25);}
  // The east opening is shared with the cottage's one physical hinged leaf.
  for(const [z,d]of[[-4.15,6.7],[4.15,6.7]]){B(wall,7.8,3,z,.25,6,d);collider('classroom-east-wall-'+z,7.8,z,.25,d);}
- B(wall,7.8,4.55,0,.25,2.9,1.6);collider('classroom-door-lintel',7.8,0,.3,1.6,6,3.1);
+ B(wall,7.8,4.55,0,.25,2.9,1.6);collider('classroom-door-lintel',7.8,0,.25,1.6,6,3.1);
  B(walnut,0,6.04,0,15.6,.16,15.2);
  for(let z=-6.6;z<7;z+=2.2){B(oak,0,5.76,z,15.3,.24,.2);B(glow,0,5.6,z,5.4,.035,.15);}
  for(const x of[-7.5,7.6])for(const z of[-7.3,7.3]){B(oak,x,3,z,.23,6,.3);B(brass,x,.21,z,.36,.18,.4);}
@@ -40,13 +40,16 @@ export function createClassroomScene(THREE,scene,{textures={},quality='balanced'
   for(const dx of[-.27,.27])B(brass,x+dx,.31,z+.26,.045,.62,.045);
   B(oak,x,.755,z-.75,.84,.13,.66);B(felt,x,.826,z-.75,.68,.012,.48);
   for(const dx of[-.31,.31])for(const dz of[-.22,.22])B(walnut,x+dx,.35,z-.75+dz,.055,.70,.055);
-  collider(seat.id+'-seat',x,z,.73,.56,.52);
-  collider(seat.id+'-back',x,z+.28,.73,.10,1.04);
-  collider(seat.id+'-desk-table',x,z-.75,.84,.66,.832);
+  collider(seat.id+'-seat-base',x,z,.72,.7,.5);
+  collider(seat.id+'-seat-cushion',x,z,.70,.67,.52,.47);
+  collider(seat.id+'-back',x,z+.28,.73,.10,1.04,.52);
+  collider(seat.id+'-desk-top',x,z-.75,.84,.66,.82,.69);
+  collider(seat.id+'-desk-mat',x,z-.75,.68,.48,.832,.82);
+  for(const dx of[-.31,.31])for(const dz of[-.22,.22])collider(seat.id+'-desk-leg-'+dx+'-'+dz,x+dx,z-.75+dz,.055,.055,.70);
  }
  // A low, jumpable podium keeps the screen visible from the side entrance.
- B(walnut,0,.14,-5.55,13,.28,2.7);B(oak,0,.29,-5.55,12.9,.02,2.6);collider('classroom-lectern-platform',0,-5.55,13,2.7,.3);
- B(oak,-5.85,.9,-5.05,1.18,1.2,.78);B(brass,-5.85,1.51,-5.05,1.28,.025,.87);collider('classroom-lectern-table',-5.85,-5.05,1.28,.87,1.522);
+ B(walnut,0,.14,-5.55,13,.28,2.7);B(oak,0,.29,-5.55,12.9,.02,2.6);collider('classroom-lectern-platform',0,-5.55,13,2.7,.28);collider('classroom-lectern-floor',0,-5.55,12.9,2.6,.3,.28);
+ B(oak,-5.85,.9,-5.05,1.18,1.2,.78);B(brass,-5.85,1.51,-5.05,1.28,.025,.87);collider('classroom-lectern-body',-5.85,-5.05,1.18,.78,1.5,.3);collider('classroom-lectern-top',-5.85,-5.05,1.28,.87,1.5225,1.4975);
  const ready=lettering(['博医教室','交流 · 分享 · 共同学习']);
  const screenMaterial=basic({map:ready,toneMapped:false});
  // Low backs and desks keep the natural 1.22 m seated Naidan eye line clear.

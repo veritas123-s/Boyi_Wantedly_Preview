@@ -164,7 +164,8 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
     transparent: true, depthWrite: false, toneMapped: false,
     blending: THREE.CustomBlending, blendSrc: THREE.ZeroFactor, blendDst: THREE.ZeroFactor
   });
-  const projection = new THREE.Matrix4();
+  const projection = new THREE.Matrix4(), lastProjection = new THREE.Matrix4();
+  let lastWidth=0,lastHeight=0,lastScreenProjection=null;
   const mediaToScreen = new THREE.Matrix4().set(
     1 / 960, 0, 0, -.5,
     0, -1 / 540, 0, .5,
@@ -176,11 +177,48 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
     if (!enabled) return null;
     projection.copy(camera.projectionMatrix).multiply(camera.matrixWorldInverse)
       .multiply(screen.matrixWorld).multiply(mediaToScreen);
-    const m = projection.elements;
-    if (Math.min(m[15], m[15]+960*m[3], m[15]+540*m[7], m[15]+960*m[3]+540*m[7]) <= camera.near) {
-      screen.material = screenMaterial;
-      return null;
+    if (width===lastWidth&&height===lastHeight&&projection.equals(lastProjection)) {
+      if (!lastScreenProjection) screen.material=screenMaterial;
+      return lastScreenProjection;
     }
+    lastProjection.copy(projection);lastWidth=width;lastHeight=height;lastScreenProjection=null;
+    const m = projection.elements;
+    // Clip in the media's own coordinates before applying perspective. A corner
+    // behind the camera must not hide the part of the screen still in view.
+    let visible = [[0,0],[960,0],[960,540],[0,540]];
+    for (const [axis, sign] of [[3,0],[0,1],[0,-1],[1,1],[1,-1]]) {
+      const distance = ([x,y]) => m[15]+m[3]*x+m[7]*y
+        + (sign ? sign*(m[12+axis]+m[axis]*x+m[4+axis]*y) : -camera.near);
+      const clipped = [];
+      for (let i=0;i<visible.length;i++) {
+        const a=visible[i],b=visible[(i+1)%visible.length],da=distance(a),db=distance(b);
+        if (da>=0) clipped.push(a);
+        if ((da>=0)!==(db>=0)) {
+          const t=da/(da-db);
+          clipped.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);
+        }
+      }
+      visible=clipped;
+      if (visible.length<3) {screen.material=screenMaterial;return null;}
+    }
+    const x0=Math.min(...visible.map(point=>point[0])),y0=Math.min(...visible.map(point=>point[1]));
+    const cropWidth=Math.max(...visible.map(point=>point[0]))-x0,cropHeight=Math.max(...visible.map(point=>point[1]))-y0;
+    if (cropWidth<.001||cropHeight<.001) {screen.material=screenMaterial;return null;}
+    const nearestCorner=Math.min(m[15],m[15]+960*m[3],m[15]+540*m[7],m[15]+960*m[3]+540*m[7]);
+    if (nearestCorner<=camera.near) {
+      // A browser can cull the whole iframe when its surface crosses the eye.
+      // At this angle keep the visible crop bounded, with the mesh masking its edges.
+      const pixels=visible.map(([x,y])=>{
+        const w=m[15]+m[3]*x+m[7]*y;
+        return [(1+(m[12]+m[0]*x+m[4]*y)/w)*width/2,(1-(m[13]+m[1]*x+m[5]*y)/w)*height/2];
+      });
+      const left=Math.min(...pixels.map(point=>point[0])),top=Math.min(...pixels.map(point=>point[1]));
+      const right=Math.max(...pixels.map(point=>point[0])),bottom=Math.max(...pixels.map(point=>point[1]));
+      return lastScreenProjection={transform:`matrix(${(right-left)/cropWidth},0,0,${(bottom-top)/cropHeight},${left},${top})`,clip:'none',x0,y0,cropWidth,cropHeight};
+    }
+    // Bound the transformed layer itself as well as its paint. A cross-origin
+    // iframe with a corner behind the camera can otherwise be dropped by the compositor.
+    for (let i=0;i<4;i++) m[12+i]+=m[i]*x0+m[4+i]*y0;
     // Project the DOM rectangle through the same camera as the depth-tested screen.
     for (let i=0;i<16;i+=4) {
       m[i]=(m[i]+m[i+3])*width/2;
@@ -188,7 +226,7 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
       m[i+2]=0;
     }
     m[10]=1;
-    return `matrix3d(${m.join(',')})`;
+    return lastScreenProjection={transform:`matrix3d(${m.join(',')})`,clip:`polygon(${visible.map(([x,y])=>`${(x-x0).toFixed(2)}px ${(y-y0).toFixed(2)}px`).join(',')})`,x0,y0,cropWidth,cropHeight};
   }
   screen.renderOrder = 10;
   screen.name = 'Cinema screen'; screen.userData.interactionId = 'cinema';

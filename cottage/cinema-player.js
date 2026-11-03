@@ -3,6 +3,8 @@ import {attachBilibiliBrowser,biliVideo} from './bilibili-browser.js?v=15f612630
 export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,closePanel,releaseLook}){
  const $=s=>document.querySelector(s),video=$('#cinema-video'),status=$('#movie-status'),url=$('#movie-url'),seek=$('#movie-seek');
  const screen=$('#cinema-web-screen'),biliHost=$('#cinema-bili-player'),screenInput=$('#cinema-screen-input'),sound=$('#cinema-sound');
+ const webMedia=$('#cinema-web-media');
+ let lastTransform='',lastClip='';
  const browser=attachBilibiliBrowser({openPanel,getSelf,send,notice});
  let movie=null,receivedAt=0,source='',active=false,flat=false,lastSync=0,bili=null,biliFrame=null,biliLoads=0,biliReady=false,projectedWorld=null,interacting=false,blocked=false,needsSound=false,playPending=false,mediaEpoch=0;
  const host=()=>!!movie?.hostId&&movie.hostId===getSelf()?.participantId;
@@ -118,11 +120,20 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   const enabled=Boolean(world&&(biliFrame||(flat&&video.readyState>=2)));
   if(projectedWorld&&projectedWorld!==world)projectedWorld.projectWebMedia(null,0,0,false);
   projectedWorld=enabled?world:null;
-  const transform=world?.projectWebMedia(camera,width,height,enabled);
-  if(screen.hidden===Boolean(transform)){
-   screen.hidden=!transform;if(!transform)setInteraction(false);controls();
+  const projection=world?.projectWebMedia(camera,width,height,enabled);
+  if(screen.hidden===Boolean(projection)){
+   screen.hidden=!projection;if(!projection)setInteraction(false);controls();
   }
-  if(transform)screen.style.transform=transform;
+  if(projection){
+   const {x0,y0,cropWidth,cropHeight,clip}=projection;
+   const crop=`${x0.toFixed(2)}/${y0.toFixed(2)}/${cropWidth.toFixed(2)}/${cropHeight.toFixed(2)}/${clip}`;
+   if(lastClip!==crop){
+    lastClip=crop;screen.style.clipPath=clip;
+    screen.style.width=`${cropWidth}px`;screen.style.height=`${cropHeight}px`;
+    webMedia.style.transform=`translate(${-x0}px,${-y0}px)`;
+   }
+   if(lastTransform!==projection.transform)screen.style.transform=lastTransform=projection.transform;
+  }
  }
  function clear(){
   browser.clearShared();active=false;movie=null;source='';receivedAt=0;lastSync=0;resetMedia();
