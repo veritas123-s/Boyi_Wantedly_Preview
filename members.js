@@ -171,7 +171,7 @@ function registerStep(step){registrationStep=step;$$('[data-register-step]').for
 function onboarding(data){
  const host=$('#member-onboarding'),actions=$('#member-onboarding-actions'),list=$('#member-candidates'),editable=data.onboarding.canEdit;
  const approved=data.claims.find(c=>c.status==='approved'),pending=data.claims.find(c=>c.status==='pending'),waiting=!!pending||data.onboarding.state==='claim_pending',rows=data.onboarding.candidates||[];
- host.hidden=editable&&!approved&&!waiting&&!rows.length;$('#member-profile-form').hidden=!editable;list.replaceChildren();actions.replaceChildren();list.hidden=false;
+ host.hidden=editable&&!approved&&!waiting&&!rows.length;$('#member-profile-form').hidden=!editable;$('#member-profile-editor').hidden=!editable;if(!editable)$('#member-profile-editor').open=false;list.replaceChildren();actions.replaceChildren();list.hidden=false;
  $('h2',host).textContent=approved?'已有主页已关联':editable?'合并已有主页':'先确认你的主页';
  const current=[data.user.name,data.user.className||'班级待补',data.user.cohort?'博医'+data.user.cohort+'期':'期次待补'].join(' · ');
  $('#member-onboarding-note').textContent=approved?'已关联：'+approved.roster_id+'。已有内容已合并到草稿，公开内容以本人发布的版本为准。':waiting?'等待核对，尚未合并。当前账号：'+current+'。申请主页：'+(pending?.roster_id||'待核对')+'。':editable?'可继续维护当前主页；如发现以下同名主页属于本人，可申请核对合并。':rows.length?'找到了同名主页，请核对姓名、班级和期次。':'没有找到同名的已有主页，可以填写自己的个人信息。';
@@ -217,10 +217,10 @@ async function privateDirectory(){
 
 async function save(){const form=$('#member-profile-form');if(!form.reportValidity())throw Error('请先填写姓名，并检查页面中的资料。');const body={profile:collect(),version:me.version},accountId=me.user.id;lockProfileInputs();const data=await call('/api/me/profile','PUT',body);if(me?.user?.id!==accountId)throw Error('登录状态已变化，请重新登录后查看保存结果。');me={...me,...data};dirty=false;if(data.onboarding.canEdit===false){showDashboard(me);throw Error('新姓名和草稿已保存，请先重新核对同名主页，再预览和公开。');}$('#member-save-state').textContent='已保存草稿 · '+new Date().toLocaleTimeString('zh-CN');return data;}
 function recoveryBox(code){const box=$('#member-recovery');box.replaceChildren(el('h2','请保存账号恢复码'),el('p','忘记密码时，可以用它重设密码。恢复码只显示这一次，请单独保存，不要发到公开主页。'),el('p',code,'member-recovery-code'));const a=button('下载恢复码',()=>{const blob=new Blob(['博医云账号恢复码\n账号：'+(lastUsername||'注册时填写的账号')+'\n恢复码：'+code+'\n请妥善保存，不要公开。'],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),download=el('a');download.href=url;download.download='博医云账号恢复码.txt';download.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});box.append(a,button('我已保存',()=>{box.hidden=true;box.replaceChildren();}));box.hidden=false;}
-function showAuth(tab='login'){clearAccountState();$('#member-auth').hidden=false;$('#member-dashboard').hidden=true;if(tab==='register')registerStep(0);for(const t of ['login','register','recover']){$('#'+t+'-form').hidden=t!==tab;const b=$('[data-auth-tab="'+t+'"]');if(b)b.setAttribute('aria-selected',String(t===tab));}message('');document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:false}}));}
+function showAuth(tab='login'){clearAccountState();$('#member-profile-editor').open=false;$('#member-auth').hidden=false;$('#member-dashboard').hidden=true;if(tab==='register')registerStep(0);for(const t of ['login','register','recover']){$('#'+t+'-form').hidden=t!==tab;const b=$('[data-auth-tab="'+t+'"]');if(b)b.setAttribute('aria-selected',String(t===tab));}message('');document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:false}}));}
 function showDashboard(data){
  const changedUser=!!me&&me.user.id!==data.user.id,registrationUsername=lastUsername;
- if(changedUser){clearAccountState();if(data.recoveryCode)lastUsername=registrationUsername;}else if(!me){accountEpoch++;managementEpoch++;}
+ if(changedUser){clearAccountState();$('#member-profile-editor').open=false;if(data.recoveryCode)lastUsername=registrationUsername;}else if(!me){accountEpoch++;managementEpoch++;}
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
  $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
  if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
@@ -239,7 +239,17 @@ async function management(){
  const groups={};for(const [key,label]of [['pending','待确认'],['verified','已确认']]){const group=el('section',undefined,'member-review-group');group.dataset.reviewGroup=key;group.append(el('h4',label+'（'+data.members.filter(u=>(u.identityStatus==='verified'?'verified':'pending')===key).length+'）'));const list=el('div');group.append(list);members.append(group);groups[key]=list;}
  const localStatus=el('p','','member-review-status');localStatus.setAttribute('role','status');members.before(localStatus);const oldStatus=$$('.member-review-status');oldStatus.slice(0,-1).forEach(n=>n.remove());
  if(!data.members.length)members.append(el('p','目前没有需要你核对的成员。','member-help'));
- for(const u of data.members){const box=el('article',undefined,'member-manage-item');box.append(el('h3',u.name),el('p',identityText(u)+(u.adminGroup?' · 行政'+u.adminGroup+'组':'')+(u.disabled?' · 已停用':''),'member-help'));const actions=el('div',undefined,'member-actions');const verification=el('label',undefined,'member-check'),toggle=el('input');toggle.type='checkbox';toggle.checked=u.canVerify;verification.append(toggle,el('span','允许协助核对本行政组学生'));if(u.requestedRole==='committee')box.append(verification);
+ for(const u of data.members){
+  const verified=u.identityStatus==='verified';
+  const box=el(verified?'details':'article',undefined,'member-manage-item');
+  const identity=identityText(u)+(u.adminGroup?' · 行政'+u.adminGroup+'组':'')+(u.disabled?' · 已停用':'');
+  if(verified){
+   box.classList.add('member-confirmed-item');
+   box.setAttribute('name','member-confirmed');
+   const summary=el('summary',undefined,'member-confirmed-summary');
+   summary.append(el('strong',u.name),el('span',identity,'member-help'));box.append(summary);
+  }else box.append(el('h3',u.name),el('p',identity,'member-help'));
+  const actions=el('div',undefined,'member-actions');const verification=el('label',undefined,'member-check'),toggle=el('input');toggle.type='checkbox';toggle.checked=u.canVerify;verification.append(toggle,el('span','允许协助核对本行政组学生'));if(u.requestedRole==='committee')box.append(verification);
   const update=type=>action(async()=>{if(!current())return;const scrollPosition=window.scrollY;if(['disable','revoke'].includes(type)&&!confirm(type==='disable'?'停用后，该账号不能登录，公开主页也会隐藏。确认停用？':'确认撤销这个账号已核对的身份与管理权限？'))return;await call('/api/manage/members/'+u.id,'POST',{action:type,canVerify:toggle.checked});if(!current()||!await management()||!sessionCurrent())return;const status=$('.member-review-status');if(status)status.textContent=u.name+'：成员状态已更新';requestAnimationFrame(()=>{if(sessionCurrent())window.scrollTo({top:scrollPosition,behavior:'instant'});});},{scroll:false});
   actions.append(button(u.identityStatus==='verified'?'重新确认身份':'确认身份',()=>update('approve')),button('撤销身份确认',()=>update('revoke')),button(u.disabled?'恢复账号':'停用账号',()=>update(u.disabled?'enable':'disable')));box.dataset.memberId=u.id;box.append(actions);groups[u.identityStatus==='verified'?'verified':'pending'].append(box);
  }
