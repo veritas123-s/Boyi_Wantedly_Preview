@@ -1,19 +1,26 @@
 // The rendering bundle is deliberately loaded only after entering the classroom.
 let rendererPromise;
 const renderer=()=>rendererPromise||(rendererPromise=import('../vendor/pptx-renderer.js?v=4ef1352fb875').catch(error=>{rendererPromise=null;throw error;}));
-export function createClassroomPlayer({THREE,getSocial,getWorld,openPanel=()=>{},notice=()=>{}}){
+export function createClassroomPlayer({THREE,getSocial,getWorld,openPanel=()=>{},closePanel=()=>{},notice=()=>{}}){
  const $=id=>document.getElementById(id),panel=document.querySelector('[data-panel="classroom"]'),listeners=[];
- let disposed=false,meta=null,deckId=null,viewer=null,offscreen=null,texture=null,attachedWorld=null,loadTask=null,renderTask=null,renderAbort=null,loadAbort=null,uploadAbort=null,deckEpoch=0,renderEpoch=0,uploadEpoch=0,renderedPage=0,failedDeck=null,uploading=false,commanding=false,pendingCommand=null,commandEpoch=0,projection=null,cancelUpload=null;
+ let disposed=false,meta=null,deckId=null,viewer=null,offscreen=null,texture=null,attachedWorld=null,loadTask=null,renderTask=null,renderAbort=null,loadAbort=null,uploadAbort=null,deckEpoch=0,renderEpoch=0,uploadEpoch=0,renderedPage=0,failedDeck=null,uploading=false,commanding=false,pendingCommand=null,commandEpoch=0,cancelUpload=null;
  const stats={downloads:0,parses:0,renders:0,texturesCreated:0,texturesDisposed:0,viewersCreated:0,viewersDisposed:0,staleResults:0,lastError:null,uploadStage:null,uploadBytes:0,uploadTotal:0,controlTimeouts:0};
  function self(){return getSocial()?.getSelf?.();}function present(){return!disposed&&self()?.room==='classroom';}function host(){return present()&&meta?.hostId===self()?.participantId;}
  function status(text){if($('classroom-status'))$('classroom-status').textContent=text;}
  function ui(){
-  const active=present(),isHost=host(),count=meta?.pageCount||0,p=meta?.page||0;
+  const active=present(),isHost=host(),count=meta?.pageCount||0,p=meta?.page||0,busy=uploading||commanding;
+  const projector=$('classroom-projector-controls');
+  if(projector){
+   projector.hidden=!isHost||!count;
+   $('projector-page').textContent=count?`${p} / ${count}`:'';
+   $('projector-prev').disabled=busy||p<=1;
+   $('projector-next').disabled=busy||p>=count;
+  }
   if($('classroom-page'))$('classroom-page').textContent=count?`${p} / ${count}`:'尚未分享课件';
   if($('classroom-presenter')){const people=[self(),...(getSocial()?.getOccupants?.()||[])],person=people.find(p=>p?.participantId===meta?.hostId);$('classroom-presenter').textContent=meta?.hostId?`讲者：${person?.nickname||person?.name||'同屋学员'}${isHost?'（你）':''}`:'讲台空闲，可认领';}
-  const busy=uploading||commanding;for(const[id,disabled]of [['classroom-claim',!active||!!meta?.hostId||busy],['classroom-file',!isHost||busy],['classroom-prev',!isHost||busy||!count||p<=1],['classroom-next',!isHost||busy||!count||p>=count],['classroom-stop',!isHost||busy||!count]])if($(id))$(id).disabled=disabled;if(cancelUpload)cancelUpload.hidden=!uploading;
+  for(const[id,disabled]of [['classroom-claim',!active||!!meta?.hostId||busy],['classroom-file',!isHost||busy],['classroom-prev',!isHost||busy||!count||p<=1],['classroom-next',!isHost||busy||!count||p>=count],['classroom-stop',!isHost||busy||!count]])if($(id))$(id).disabled=disabled;if(cancelUpload)cancelUpload.hidden=!uploading;
  }
- function dropTexture(){if(attachedWorld){attachedWorld.setPresentationTexture(null);attachedWorld=null;}if(texture){texture.dispose();stats.texturesDisposed++;texture=null;}projection?.replaceChildren();}
+ function dropTexture(){if(attachedWorld){attachedWorld.setPresentationTexture(null);attachedWorld=null;}if(texture){texture.dispose();stats.texturesDisposed++;texture=null;}}
  function attachTexture(){const world=getWorld?.('classroom');if(texture&&world&&attachedWorld!==world){attachedWorld?.setPresentationTexture(null);world.setPresentationTexture(texture);attachedWorld=world;}}
  function dropViewer(){if(viewer){viewer.destroy();stats.viewersDisposed++;viewer=null;}offscreen?.remove();offscreen=null;}
  function cancelCommand(){const job=pendingCommand;pendingCommand=null;commanding=false;commandEpoch++;job?.controller.abort(new DOMException('课件状态已更新','AbortError'));}
@@ -33,7 +40,7 @@ export function createClassroomPlayer({THREE,getSocial,getWorld,openPanel=()=>{}
    const api=await timed(renderer(),controller,60000,'课件组件下载超时，请重新读取投影'),canvas=await timed(api.renderPage(localViewer,p-1,localContainer,{signal:controller.signal}),controller,45000,'这一页渲染超时，请重试或切换页面',late=>{late.width=late.height=1;stats.staleResults++;});stats.renders++;
    if(!present()||epoch!==deckEpoch||revision!==renderEpoch||meta?.deckId!==currentDeck||meta?.page!==p){stats.staleResults++;canvas.width=canvas.height=1;return;}
    const next=new THREE.CanvasTexture(canvas);next.colorSpace=THREE.SRGBColorSpace;next.generateMipmaps=false;next.minFilter=THREE.LinearFilter;next.magFilter=THREE.LinearFilter;next.needsUpdate=true;stats.texturesCreated++;
-   dropTexture();texture=next;renderedPage=p;stats.lastError=null;canvas.style.cssText='display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;';canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`${meta.title} 第${p}页`);if(projection)projection.replaceChildren(canvas);attachTexture();status(`${meta.title} · 第 ${p} / ${meta.pageCount} 页`);
+   const firstPage=!texture;dropTexture();texture=next;renderedPage=p;stats.lastError=null;attachTexture();if(firstPage&&attachedWorld&&host()&&!panel?.hidden&&$('room-dialog')?.open)closePanel();status(`${meta.title} · 第 ${p} / ${meta.pageCount} 页`);
   })().catch(error=>{if(present()&&epoch===deckEpoch&&revision===renderEpoch&&error?.name!=='AbortError'){stats.lastError=errorMessage(error);status(stats.lastError);notice(stats.lastError);}}).finally(()=>{if(renderTask===job)renderTask=null;if(renderAbort===controller)renderAbort=null;});
   job.promise=operation;renderTaskPrevious=operation;return operation;
  }
@@ -72,7 +79,10 @@ export function createClassroomPlayer({THREE,getSocial,getWorld,openPanel=()=>{}
  function bind(id,event,callback){const node=$(id);if(node){node.addEventListener(event,callback);listeners.push(()=>node.removeEventListener(event,callback));}}
  bind('room-dialog','close',()=>{if(stats.lastError){stats.lastError=null;if(present()&&!meta?.deckId)status('可认领讲台并分享 PPTX；课件仅在本次教室中临时保留');}});
  bind('classroom-claim','click',()=>void command({action:'claim'}));bind('classroom-prev','click',()=>{if(host()&&meta.page>1)void command({action:'page',deckId:meta.deckId,page:meta.page-1});});bind('classroom-next','click',()=>{if(host()&&meta.page<meta.pageCount)void command({action:'page',deckId:meta.deckId,page:meta.page+1});});bind('classroom-stop','click',()=>void command({action:'stop',deckId:meta?.deckId}));bind('classroom-file','change',event=>{const file=event.target.files?.[0];event.target.value='';void upload(file);});
- if(panel){cancelUpload=document.createElement('button');cancelUpload.id='classroom-cancel-upload';cancelUpload.type='button';cancelUpload.textContent='取消上传';cancelUpload.hidden=true;cancelUpload.addEventListener('click',()=>uploadAbort?.abort());(panel.querySelector('.classroom-actions')||panel).append(cancelUpload);listeners.push(()=>cancelUpload.remove());projection=$('classroom-projection');const ownsProjection=!projection;if(!projection){projection=document.createElement('div');projection.id='classroom-projection';panel.append(projection);}const hint=document.createElement('p');hint.textContent='静态投影：字体、动画和复杂图表的显示可能与 PowerPoint 不同；课件中的链接与音视频不会打开。';hint.dataset.classroomHint='true';panel.append(hint);const retry=document.createElement('button');retry.type='button';retry.textContent='重新读取投影';retry.addEventListener('click',()=>{stats.lastError=null;if(present()&&meta?.deckId){failedDeck=null;if(viewer)void showPage();else void loadDeck();}else if(present())apply(meta);openPanel('classroom');});panel.append(retry);listeners.push(()=>{retry.remove();hint.remove();if(ownsProjection)projection.remove();else projection.replaceChildren();});}
+ bind('projector-prev','click',()=>{if(host()&&meta.page>1)void command({action:'page',deckId:meta.deckId,page:meta.page-1});});
+ bind('projector-next','click',()=>{if(host()&&meta.page<meta.pageCount)void command({action:'page',deckId:meta.deckId,page:meta.page+1});});
+ bind('projector-settings','click',event=>openPanel('classroom',event.currentTarget));
+ if(panel){cancelUpload=document.createElement('button');cancelUpload.id='classroom-cancel-upload';cancelUpload.type='button';cancelUpload.textContent='取消上传';cancelUpload.hidden=true;cancelUpload.addEventListener('click',()=>uploadAbort?.abort());(panel.querySelector('.classroom-actions')||panel).append(cancelUpload);listeners.push(()=>cancelUpload.remove());const hint=document.createElement('p');hint.textContent='静态投影：字体、动画和复杂图表的显示可能与 PowerPoint 不同；课件中的链接与音视频不会打开。';hint.dataset.classroomHint='true';panel.append(hint);const retry=document.createElement('button');retry.type='button';retry.textContent='重新读取投影';retry.addEventListener('click',()=>{stats.lastError=null;if(present()&&meta?.deckId){failedDeck=null;if(viewer)void showPage();else void loadDeck();}else if(present())apply(meta);openPanel('classroom');});panel.append(retry);listeners.push(()=>{retry.remove();hint.remove();});}
  ui();
  return{apply,clear,dispose(){if(disposed)return;clear();disposed=true;for(const remove of listeners)remove();},getStats:()=>({...stats,disposed,deckId,renderedPage,loading:!!loadTask,rendering:!!renderTask,uploading,commanding,commandAction:pendingCommand?.body.action||null,viewer:!!viewer,texture:!!texture,attached:!!attachedWorld,pageCount:viewer?.slideCount||0,externalMedia:'block',cachedDecks:viewer?1:0})};
 }
