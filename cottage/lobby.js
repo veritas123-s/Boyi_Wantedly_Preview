@@ -1,5 +1,5 @@
 import { ROOM_ORIGINS, ROOM_BOUNDS } from './room-layout.js?v=87b8be1d1b17';
-import { createBoyiFairy } from './scene.js?v=88fe2ad16406';
+import { createBoyiFairy } from './scene.js?v=e855fc0787d7';
 
 /** Public, fully modelled reception hall. Membership decisions belong to app. */
 export function createLobbyScene(THREE, scene, {textures={},quality='balanced',reduced=false}={}) {

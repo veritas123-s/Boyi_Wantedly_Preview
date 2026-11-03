@@ -1,17 +1,17 @@
 import {attachBilibiliBrowser,biliVideo} from './bilibili-browser.js?v=15f612630590';
 
-export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,closePanel,releaseLook,aimScreen}){
+export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,closePanel,releaseLook}){
  const $=s=>document.querySelector(s),video=$('#cinema-video'),status=$('#movie-status'),url=$('#movie-url'),seek=$('#movie-seek');
  const screen=$('#cinema-web-screen'),biliHost=$('#cinema-bili-player'),screenInput=$('#cinema-screen-input'),sound=$('#cinema-sound');
  const webMedia=$('#cinema-web-media'),panelScreen=$('#movie-panel-screen'),loading=$('#movie-loading'),progress=$('#movie-load-progress'),percent=$('#movie-load-percent');
- let openScreenPending=false,loadTimer;
+ let loadTimer;
  function setProgress(value){loading.hidden=value===null;if(value!==null){progress.value=value;percent.textContent=value+'%';}}
  let lastTransform='',lastClip='';
  const browser=attachBilibiliBrowser({openPanel,getSelf,send,notice});
  let movie=null,receivedAt=0,source='',active=false,flat=false,lastSync=0,bili=null,biliFrame=null,biliLoads=0,biliReady=false,projectedWorld=null,interacting=false,blocked=false,needsSound=false,playPending=false,mediaEpoch=0;
  const host=()=>!!movie?.hostId&&movie.hostId===getSelf()?.participantId;
  function setInteraction(value){
-  interacting=Boolean(value&&!screen.hidden&&biliFrame);
+  interacting=Boolean(value&&biliReady&&biliFrame);
   if(interacting)releaseLook();
   document.body.classList.toggle('cinema-screen-input',interacting);
   screenInput.setAttribute('aria-pressed',String(interacting));
@@ -19,11 +19,11 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   if(biliFrame)biliFrame.tabIndex=interacting?0:-1;
  }
  screenInput.onclick=()=>setInteraction(!interacting);
- panelScreen.onclick=()=>{if(!biliReady)return;closePanel();aimScreen();openScreenPending=true;};
+ panelScreen.onclick=()=>{if(!biliReady)return;closePanel();setInteraction(true);};
  document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement)setInteraction(false);});
  function dismissControls(){if($('#room-dialog').open&&!$('[data-panel="cinema"]').hidden)closePanel();}
  function clearBili(){
-  clearTimeout(loadTimer);openScreenPending=false;setInteraction(false);
+  clearTimeout(loadTimer);setInteraction(false);
   biliFrame?.remove();biliFrame=null;bili=null;biliReady=false;biliHost.hidden=true;video.hidden=false;
  }
  function showBili(next){
@@ -48,7 +48,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   for(const id of ['movie-load','movie-play','movie-pause','movie-stop','movie-seek'])$('#'+id).disabled=!isHost;
   if(movie?.kind==='web')for(const id of ['movie-play','movie-pause','movie-seek'])$('#'+id).disabled=true;
   $('#movie-unlock').hidden=sound.hidden=!active||(!blocked&&!needsSound);
-  screenInput.hidden=!active||!biliFrame||screen.hidden;
+  screenInput.hidden=!active||!biliReady;
   panelScreen.hidden=!biliFrame;panelScreen.disabled=!biliReady;
  }
  function targetTime(){return movie?movie.time+(movie.playing?(performance.now()-receivedAt)/1000:0):0;}
@@ -143,10 +143,9 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   projectedWorld=enabled?world:null;
   const projection=world?.projectWebMedia(camera,width,height,enabled);
   if(screen.hidden===Boolean(projection)){
-   screen.hidden=!projection;if(!projection)setInteraction(false);controls();
+   screen.hidden=!projection;
   }
   if(projection){
-   if(openScreenPending){openScreenPending=false;setInteraction(true);}
    const {x0,y0,cropWidth,cropHeight,clip}=projection;
    const crop=`${x0.toFixed(2)}/${y0.toFixed(2)}/${cropWidth.toFixed(2)}/${cropHeight.toFixed(2)}/${clip}`;
    if(lastClip!==crop){
@@ -161,7 +160,7 @@ export function createCinemaPlayer({getSelf,send,notice,setVideo,openPanel,close
   browser.clearShared();active=false;movie=null;source='';receivedAt=0;lastSync=0;resetMedia();
   url.value='';status.textContent='';seek.value='0';$('#movie-time').textContent='0:00';controls();
  }
- return {apply,clear,project,update(){
+ return {apply,clear,project,isInteracting:()=>interacting,finishInteraction:()=>setInteraction(false),update(){
   if(active&&getSelf()?.room!=='cinema'){clear();return;}
   if(active&&performance.now()-lastSync>1000){lastSync=performance.now();sync();}
  },getStats:()=>({

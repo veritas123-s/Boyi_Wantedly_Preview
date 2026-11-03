@@ -698,7 +698,7 @@ export function createCottageScene(THREE, scene, { textures = {}, quality = 'bal
   Object.defineProperties(stats,{spriteFollowing:{enumerable:true,get:()=>fairy.stats.spriteFollowing},spriteGestureCount:{enumerable:true,get:()=>fairy.stats.spriteGestureCount}});
   let elapsed=0,fireEnabled=true,nightEnabled=true;
   return {
-    root,origin:ROOM_ORIGINS.cottage,bounds:ROOM_BOUNDS.cottage,connection:ROOM_CONNECTIONS.cottage,connections:ROOM_PORTALS.cottage,colliders,interactables,elevator,setElevatorState,setCompanionActive(active){fairy.setActive(active);root.traverse(o=>{if(o.isHemisphereLight||o.isAmbientLight||o.isDirectionalLight)o.visible=Boolean(active);});},spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
+    root,origin:ROOM_ORIGINS.cottage,bounds:ROOM_BOUNDS.cottage,connection:ROOM_CONNECTIONS.cottage,connections:ROOM_PORTALS.cottage,colliders,interactables,elevator,setElevatorState,setCompanionActive(active){fairy.setActive(active);},spawn:{x:0,y:1.65,z:4.5,yaw:0},stats,
     setViewerPose(pose={}){fairy.setViewerPose(pose);},
     setSpriteState(state='idle'){fairy.setSpriteState(state);},
     setFireEnabled(enabled=true) {

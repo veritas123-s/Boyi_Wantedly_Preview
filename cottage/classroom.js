@@ -1,4 +1,4 @@
-import { createBoyiFairy } from './scene.js?v=88fe2ad16406';
+import { createBoyiFairy } from './scene.js?v=e855fc0787d7';
 import { ROOM_LAYOUT, ROOM_ORIGINS, ROOM_BOUNDS, ROOM_PORTALS } from './room-layout.js?v=87b8be1d1b17';
 
 /** A local, shared-geometry teaching room next to the western arcade. */
@@ -65,7 +65,10 @@ export function createClassroomScene(THREE,scene,{textures={},quality='balanced'
   batch(plane,basic({map:texture,transparent:true,toneMapped:false,depthWrite:false}),[x,3.15,-7.16],[w,h,1]);originalLogoCount++;
  }
  const environment=new THREE.HemisphereLight(0xcad6d2,0x4e3928,1.6);root.add(environment);
- const downLight=new THREE.PointLight(0xffd7a4,ultra?0:85,22,2);downLight.position.set(0,5.2,-1);downLight.visible=!ultra;root.add(downLight);
+ if(!ultra)for(const z of [-3.2,3.2]){
+  const downLight=new THREE.PointLight(0xffe2b9,z<0?54:48,13,2);
+  downLight.position.set(0,5.2,z);root.add(downLight);
+ }
  let instances=0;
  for(const b of batches.values()){const object=new THREE.InstancedMesh(b.g,b.m,b.matrices.length);b.matrices.forEach((matrix,i)=>object.setMatrixAt(i,matrix));object.instanceMatrix.needsUpdate=true;object.receiveShadow=!ultra;object.castShadow=false;object.computeBoundingSphere();root.add(object);instances+=b.matrices.length;}
  batches.clear();
@@ -75,7 +78,7 @@ export function createClassroomScene(THREE,scene,{textures={},quality='balanced'
   setClassroomDoor(value){doorOpen=Boolean(value);},
   getPortal(p){return doorOpen&&p&&p.x>=7.78&&p.x<8.2&&Math.abs(p.z)<.8?'cottage':null;},
   setPresentationTexture(texture=null){if(disposed)return;if(texture!==null&&!texture.isTexture)throw new TypeError('课件需要Three纹理');externalPresentation=texture;screenMaterial.map=texture||ready;screenMaterial.needsUpdate=true;stats.presentationAttached=Boolean(texture);},
-  setCompanionActive(active){fairy.setActive(active);environment.visible=Boolean(active);},
+  setCompanionActive(active){fairy.setActive(active);},setSharedLighting(){environment.visible=false;},
   setViewerPose(pose){fairy.setViewerPose(pose);},setSpriteState(state){fairy.setSpriteState(state);},
   setNightMode(night=true){environment.intensity=night?1.6:1.9;},
   update(seconds,dt=0){if(!disposed)fairy.update(seconds,dt);},

@@ -1,4 +1,4 @@
-import { createBoyiFairy } from './scene.js?v=88fe2ad16406';
+import { createBoyiFairy } from './scene.js?v=e855fc0787d7';
 import { ROOM_LAYOUT, ROOM_ORIGINS, ROOM_BOUNDS, ROOM_CONNECTIONS, ROOM_PORTALS } from './room-layout.js?v=87b8be1d1b17';
 
 export function createCinemaScene(THREE, scene, { textures = {}, quality = 'balanced', reduced = false } = {}) {
@@ -124,21 +124,31 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   const arm = G(new THREE.LatheGeometry([[0, .2], [.13, .22], [.17, .35], [.16, .66], [.12, .82], [0, .86]].map(p => new THREE.Vector2(...p)), 16));
   const seats = ROOM_LAYOUT.cinema.seats;
   const riser = .24, rearFloor = 4 * riser;
+  const stepEdge=standard({color:0x9d744d,roughness:.62,metalness:.18});
+  const seatSeam=standard({color:0x4d1523,roughness:.9});
   function tierBox(id, x, z, width, depth, height) {
     B(walnut, x, height / 2, z, width, height, depth);
-    B(copper, x, height, z + depth / 2 - .018, width, .012, .035);
+    const leadingEdge=z-depth/2+.025;
+    B(stepEdge,x,height+.003,leadingEdge,width-.04,.006,.045);
+    if(id.startsWith('cinema-stair'))B(glow,x,height-.062,z-depth/2+.005,.18,.025,.013);
     colliders.push({id,minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2,minY:0,maxY:height,walkableStep:true});
   }
-  tierBox('cinema-rear-platform',0,2.95,6.1,1.9,rearFloor);
+  // Leave a full aisle behind the rear sofa. The side treads rise
+  // from the front aisle toward this rear landing.
+  tierBox('cinema-rear-platform',0,3.475,6.1,2.95,rearFloor);
   for (const side of [-1,1]) for (let step=0;step<4;step++) {
-    tierBox('cinema-stair-'+side+'-'+step,side*3.65,3.9-(step+.5)*.475,1.2,.475,(step+1)*riser);
+    tierBox('cinema-stair-'+side+'-'+step,side*3.65,2.15+(step+.5)*.55,1.2,.55,(step+1)*riser);
   }
-  for (const row of [seats.slice(0, 4), seats.slice(4, 8)]) {
-    const z = row[0].z, floor = row[0]===seats[4]?rearFloor:0; B(walnut, 0, floor+.19, z, 5.5, .22, 1.25); B(copper, 0, floor+.285, z - .63, 5.35, .025, .015);
+  const rearSeats=seats.slice(4);
+  for (const row of [seats.slice(0, 4), rearSeats]) {
+    const z = row[0].z, floor = row===rearSeats?rearFloor:0; B(walnut, 0, floor+.19, z, 5.5, .22, 1.25); B(copper, 0, floor+.285, z - .63, 5.35, .025, .015);
     for (const x of [-2.45, 2.45]) for (const dz of [-.47, .47]) B(wood, x, floor+.065, z + dz, .13, .13, .13);
     for (const seat of row) {
       batch(cushion, velvet, [seat.x, floor + seat.height - .12, z - .045]);
-      batch(back, velvet, [seat.x, floor+.9, z + .47]);for(const dx of [-.59,.59])B(copper,seat.x+dx,floor+seat.height-.025,z-.045,.012,.015,.94);B(copper,seat.x,floor+seat.height-.025,z-.51,1.16,.015,.012);
+      batch(back, velvet, [seat.x, floor+.9, z + .47]);
+      B(seatSeam,seat.x,floor+.69,z+.338,1.07,.014,.012);
+      B(seatSeam,seat.x,floor+.405,z-.576,1.08,.016,.009);
+      for(const dx of [-.59,.59])B(copper,seat.x+dx,floor+seat.height-.025,z-.045,.012,.015,.94);B(copper,seat.x,floor+seat.height-.025,z-.51,1.16,.015,.012);
       for (const dx of [-.29, .29]) {
         for (const dz of [-.27, .21]) batch(sphere, copper, [seat.x + dx, floor+seat.height, z + dz], [.018, .007, .018]);
         for (const y of [.72, 1.07]) batch(sphere, copper, [seat.x + dx, floor+y, z + .337], [.018, .018, .012]);
@@ -150,7 +160,9 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
       colliders.push({id:'cinema-sofa-arm-'+z+'-'+side,minX:x-.17,maxX:x+.17,minZ:z-.561,maxZ:z+.561,minY:floor+.2,maxY:floor+.86});
       batch(ring, copper, [side * 2.58, floor+.7, z - .48], [.09, .09, .09]);
     }
-    colliders.push({id:'cinema-sofa-seat-'+z,minX:-2.75,maxX:2.75,minZ:z-.625,maxZ:z+.32,minY:floor,maxY:floor+.52});colliders.push({id:'cinema-sofa-back-'+z,minX:-2.75,maxX:2.75,minZ:z+.32,maxZ:z+.625,minY:floor,maxY:floor+1.34});
+    colliders.push({id:'cinema-sofa-base-'+z,minX:-2.75,maxX:2.75,minZ:z-.625,maxZ:z+.625,minY:floor+.08,maxY:floor+.3});
+    colliders.push({id:'cinema-sofa-seat-'+z,minX:-2.565,maxX:2.565,minZ:z-.575,maxZ:z+.485,minY:floor+.28,maxY:floor+.52});
+    colliders.push({id:'cinema-sofa-back-'+z,minX:-2.57,maxX:2.57,minZ:z+.345,maxZ:z+.595,minY:floor+.46,maxY:floor+1.34});
   }
   colliders.push({id:'cinema-screen-frame',minX:-4.24,maxX:4.24,minZ:-6.28,maxZ:-6.05,minY:.11,maxY:5.09});
   B(copper, 0, 2.6, -6.25, 8.48, 4.98, .06); B(walnut, 0, 2.6, -6.15, 8.32, 4.82, .12);
@@ -243,11 +255,11 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   const beam = mesh(G(new THREE.ConeGeometry(2.15, direction.length(), 24, 1, true)), basic({ color: 0xffddb5, transparent: true, opacity: .022, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false }), origin.clone().add(destination).multiplyScalar(.5).toArray());
   beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()); beam.visible = false;
   const ambient = new THREE.HemisphereLight(0xffe2bc, 0x342232, 1.2); root.add(ambient);
-  const key = new THREE.SpotLight(0xffdfb3, 135, 22, 1.03, .65, 2); key.position.set(0, 5.1, 3.8);
+  const key = new THREE.SpotLight(0xffdfb3, 82, 15, 1.03, .65, 2); key.position.set(0, 5.1, 3.8);
   key.target.position.set(0, .4, -.8); key.castShadow = tier !== 'smooth' && !ultra && !reduced;
-  key.shadow.mapSize.set(tier==='high'?2048:1024,tier==='high'?2048:1024);key.shadow.autoUpdate=false;key.shadow.needsUpdate=true; key.shadow.camera.near = .3; key.shadow.camera.far = 22; key.shadow.bias = -.0003;
+  key.shadow.mapSize.set(tier==='high'?2048:1024,tier==='high'?2048:1024);key.shadow.autoUpdate=false;key.shadow.needsUpdate=true; key.shadow.camera.near = .3; key.shadow.camera.far = 15; key.shadow.bias = -.0003;
   root.add(key, key.target);
-  const roomLight = new THREE.PointLight(0xffc58e, 15, 12, 2); roomLight.position.set(0, 3.8, 1.5); if(ultra){roomLight.intensity=0;key.intensity=0;roomLight.visible=key.visible=false;}root.add(roomLight);
+  const roomLight = new THREE.PointLight(0xffc58e, 18, 10, 2); roomLight.position.set(0, 3.8, 1.5); if(ultra){roomLight.intensity=0;key.intensity=0;roomLight.visible=key.visible=false;}root.add(roomLight);
   for (const b of batches.values()) {
     const object = new THREE.InstancedMesh(b.geometry, b.material, b.matrices.length);
     b.matrices.forEach((matrix, i) => object.setMatrixAt(i, matrix)); object.instanceMatrix.needsUpdate = true;
@@ -269,7 +281,7 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
     screenMaterial.map = replacement || ready; screenMaterial.needsUpdate = true;
     previous?.dispose(); stats.videoAttached = next !== null; beam.visible = false;
   }
-  return {root,origin:ROOM_ORIGINS.cinema,bounds:ROOM_BOUNDS.cinema,connection:ROOM_CONNECTIONS.cinema,connections:ROOM_PORTALS.cinema,colliders,interactables,setCompanionActive(active){fairy.setActive(active);root.traverse(o=>{if(o.isHemisphereLight||o.isAmbientLight||o.isDirectionalLight)o.visible=Boolean(active);});},spawn: { x: 4.5, z: 4.8, yaw: 0 }, stats, setVideo, seatElevation:seatId=>seats.slice(4).some(seat=>seat.id===seatId)?rearFloor:0, projectWebMedia, setCinemaDoor, getPortal,
+  return {root,origin:ROOM_ORIGINS.cinema,bounds:ROOM_BOUNDS.cinema,connection:ROOM_CONNECTIONS.cinema,connections:ROOM_PORTALS.cinema,colliders,interactables,setCompanionActive(active){fairy.setActive(active);},setSharedLighting(){ambient.visible=false;},spawn: { x: 4.5, z: 4.8, yaw: 0 }, stats, setVideo, seatElevation:seatId=>rearSeats.some(seat=>seat.id===seatId)?rearFloor:0,exitElevation:(x,z)=>rearSeats.some(seat=>Math.hypot(x-seat.exit.x,z-seat.exit.z)<.025)?rearFloor:0, projectWebMedia, setCinemaDoor, getPortal,
     setViewerPose(pose = {}) {
       if (disposed || ![pose.x, pose.y, pose.z, pose.yaw].every(Number.isFinite)) return;
       fairy.setViewerPose(pose);
