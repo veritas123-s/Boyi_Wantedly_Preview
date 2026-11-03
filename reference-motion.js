@@ -411,6 +411,21 @@ function scrollEffects() {
     footer.style.setProperty('--rm-footer-clip',`${mq.matches||innerWidth<760?0:(1-p)*15}%`);
   }
 }
+function observeNavigation(panel) {
+  const roots=$$('.w-nav,.w-menu-panel');
+  for(const root of roots) {
+    new MutationObserver(records=>{
+      const links=new Set();
+      for(const record of records)for(const child of record.addedNodes) {
+        if(child.nodeType!==Node.ELEMENT_NODE)continue;
+        if(child.matches('a'))links.add(child);
+        for(const link of $$('a',child))links.add(link);
+      }
+      for(const link of links)if(root.contains(link))roll(link);
+      if(root===panel&&links.size)$$('a',panel).forEach((link,i)=>link.style.setProperty('--rm-menu-delay',String(i*50+100)+'ms'));
+    }).observe(root,{childList:true,subtree:true});
+  }
+}
 function init() {
   if(ready) return; ready=true;
   if(!getComputedStyle(document.documentElement).getPropertyValue('--rm-paper').trim()){document.documentElement.classList.remove('rm-boot');return;}
@@ -420,6 +435,7 @@ function init() {
     if(stage.classList.contains('copy-entered')) $$('.rm-title',stage).forEach(reveal);
   }).observe(stage,{attributes:true,attributeFilter:['class']});
   const panel=$('.w-menu-panel');
+  observeNavigation(panel);
   if(panel) {
     $$('a',panel).forEach((n,i)=>n.style.setProperty('--rm-menu-delay',`${i*50+100}ms`));
     const update=()=>panel.classList.toggle('rm-menu-open',!panel.hidden);

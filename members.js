@@ -22,7 +22,11 @@ function clearPrivateState(){
  for(const id of ['member-private-list','member-private-view']){const node=document.getElementById(id);if(node)node.replaceChildren();}
  const view=document.getElementById('member-private-view');if(view)view.hidden=true;
 }
+let reviewFilter='pending';
 function clearManagementState(){
+ reviewFilter='pending';
+ if($('#member-review-body'))setReviewOpen(false);
+ for(const button of $$('[data-review-filter]'))button.textContent=button.dataset.label;
  managementEpoch++;
  for(const id of ['member-manage-people','member-manage-claims']){const node=document.getElementById(id);if(node)node.replaceChildren();}
  document.querySelectorAll('.member-review-status').forEach(node=>node.remove());
@@ -232,13 +236,27 @@ function showDashboard(data){
  void refreshSecurity();
  document.dispatchEvent(new CustomEvent('boyi:account-state',{detail:{authenticated:true}}));
 }
+function setReviewOpen(open){
+ $('#member-review-body').hidden=!open;
+ $('#member-manage-refresh').textContent=open?'刷新':'查看审核';
+ $('#member-manage-refresh').setAttribute('aria-expanded',String(open));
+ $('#member-review-close').hidden=!open;
+}
+function showReviewFilter(){
+ for(const button of $$('[data-review-filter]'))button.setAttribute('aria-pressed',String(button.dataset.reviewFilter===reviewFilter));
+ $('#member-manage-people').hidden=reviewFilter==='claims';
+ $('#member-manage-claims').hidden=reviewFilter!=='claims';
+ for(const group of $$('[data-review-group]'))group.hidden=group.dataset.reviewGroup!==reviewFilter;
+}
 async function management(){
  const epoch=++managementEpoch,session=accountEpoch,accountId=me?.user?.id,current=()=>epoch===managementEpoch&&session===accountEpoch&&me?.user?.id===accountId,sessionCurrent=()=>session===accountEpoch&&me?.user?.id===accountId;
  let data;try{data=await call('/api/manage/pending');}catch(error){if(!current()||error.stale)return false;throw error;}if(!current())return false;
  const members=$('#member-manage-people'),claims=$('#member-manage-claims');members.replaceChildren();claims.replaceChildren();
+ const counts={pending:data.members.filter(u=>u.identityStatus!=='verified').length,verified:data.members.filter(u=>u.identityStatus==='verified').length,claims:data.claims.length};
+ for(const button of $$('[data-review-filter]'))button.textContent=button.dataset.label+'（'+counts[button.dataset.reviewFilter]+'）';
  const groups={};for(const [key,label]of [['pending','待确认'],['verified','已确认']]){const group=el('section',undefined,'member-review-group');group.dataset.reviewGroup=key;group.append(el('h4',label+'（'+data.members.filter(u=>(u.identityStatus==='verified'?'verified':'pending')===key).length+'）'));const list=el('div');group.append(list);members.append(group);groups[key]=list;}
  const localStatus=el('p','','member-review-status');localStatus.setAttribute('role','status');members.before(localStatus);const oldStatus=$$('.member-review-status');oldStatus.slice(0,-1).forEach(n=>n.remove());
- if(!data.members.length)members.append(el('p','目前没有需要你核对的成员。','member-help'));
+ for(const key of ['pending','verified'])if(!counts[key])groups[key].append(el('p',key==='pending'?'目前没有待确认的成员。':'目前没有已确认的成员。','member-help'));
  for(const u of data.members){
   const verified=u.identityStatus==='verified';
   const box=el(verified?'details':'article',undefined,'member-manage-item');
@@ -255,6 +273,7 @@ async function management(){
  }
  if(!data.claims.length)claims.append(el('p','目前没有待核对的主页认领。','member-help'));
  for(const c of data.claims){const box=el('article',undefined,'member-manage-item');box.append(el('h3',c.name),el('p','申请认领五期已有主页 · '+c.rosterId,'member-help'));const actions=el('div',undefined,'member-actions');for(const yes of [true,false])actions.append(button(yes?'确认认领':'暂不通过',()=>action(async()=>{if(!current())return;const scrollPosition=window.scrollY;await call('/api/manage/claims/'+c.id,'POST',{approve:yes});if(!current()||!await management()||!sessionCurrent())return;const status=$('.member-review-status');if(status)status.textContent=c.name+'：认领申请已处理';requestAnimationFrame(()=>{if(sessionCurrent())window.scrollTo({top:scrollPosition,behavior:'instant'});});},{scroll:false})));box.append(actions);claims.append(box);}
+ showReviewFilter();
  return true;
 }
 async function setupAccount(){
@@ -275,7 +294,9 @@ async function setupAccount(){
  $('#member-unpublish').addEventListener('click',()=>action(async()=>{if(!confirm('撤回后，访客将不能查看这份个人主页。草稿会保留，确认撤回？'))return;const data=await call('/api/me/unpublish','POST',{});showDashboard({...data,csrf});message('公开版本已撤回，草稿仍保留在本人账号。');}));
  $('#member-logout').addEventListener('click',()=>action(async()=>{if(dirty&&!confirm('还有未保存的修改，确认退出？'))return;await call('/api/logout','POST',{});me=null;csrf='';dirty=false;showAuth('login');$('#member-profile-form').reset();message('已退出登录。');}));
  $('#member-claim-button').addEventListener('click',()=>action(async()=>{await call('/api/me/claim','POST',{rosterId:$('#member-claim-id').value});const data=await call('/api/me');showDashboard(data);message('认领申请已提交。');}));
- $('#member-manage-refresh').addEventListener('click',()=>action(management));
+ $('#member-manage-refresh').addEventListener('click',()=>action(async()=>{setReviewOpen(true);showReviewFilter();await management();}));
+ $('#member-review-close').addEventListener('click',()=>{setReviewOpen(false);$('#member-manage-refresh').focus();});
+ for(const button of $$('[data-review-filter]'))button.addEventListener('click',()=>{reviewFilter=button.dataset.reviewFilter;showReviewFilter();});
  $('#member-password-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{const d=new FormData(e.target);await call('/api/me/password','POST',{oldPassword:d.get('oldPassword'),newPassword:d.get('newPassword')});e.target.reset();me=null;csrf='';dirty=false;showAuth('login');message('密码已修改，请重新登录。');});});
  $('#member-avatar-file').addEventListener('change',e=>action(async()=>{
   const file=e.target.files[0],session=accountEpoch,accountId=me?.user?.id,current=()=>session===accountEpoch&&me?.user?.id===accountId;
