@@ -60,7 +60,9 @@ function boot(){
  if(restore){
   try{host.hidden=localStorage.getItem(visibilityKey)==='1';}catch{}
   hide.onclick=hideFromPanel.onclick=()=>{hideGuide();document.querySelector('#open-settings')?.focus({preventScroll:true});};
-  restore.onclick=()=>{departure.onanimationend=departure.onanimationcancel=null;departure.hidden=true;host.classList.remove('guide-departing');saveHidden(false);host.hidden=false;restore.textContent='博医云伴已显示';};
+  const restoreGuide=()=>{departure.onanimationend=departure.onanimationcancel=null;departure.hidden=true;host.classList.remove('guide-departing');saveHidden(false);host.hidden=false;restore.textContent='博医云伴已显示';};
+  restore.onclick=restoreGuide;
+  window.addEventListener('boyi:toggle-guide-visibility',()=>{if(host.hidden||host.classList.contains('guide-departing'))restoreGuide();else{hideGuide();restore.textContent='召回博医云伴';}});
   hide.addEventListener('click',()=>restore.textContent='召回博医云伴');
   hideFromPanel.addEventListener('click',()=>restore.textContent='召回博医云伴');
  }
