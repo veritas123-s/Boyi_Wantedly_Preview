@@ -16,7 +16,7 @@ export function attachRoomActions(THREE,world,room){
  const doors=[];
  if(room==='cottage'){
   function addPortalDoor({kind,label,x,z,rotation,target}){
-   const frame=new THREE.Group();frame.name=label+' shared doorway';frame.position.set(x,0,z);frame.rotation.y=rotation;root.add(frame);
+   const frame=new THREE.Group();frame.name=label+' shared doorway';frame.userData.portalRoom=target;frame.position.set(x,0,z);frame.rotation.y=rotation;root.add(frame);
    const hinge=new THREE.Group();hinge.name=label+' single hinged leaf';hinge.position.x=-.8;frame.add(hinge);
    const leaf=mesh(new THREE.BoxGeometry(1.6,3.05,.10),leather,hinge);leaf.position.set(.8,1.525,0);leaf.receiveShadow=true;
    for(const side of[-1,1]){const jamb=mesh(new THREE.BoxGeometry(.14,3.2,.30),gold,frame);jamb.position.set(side*.88,1.6,0);world.colliders.push({id:kind+'-door-jamb-'+side,space:'world',minX:x-.15,maxX:x+.15,minZ:z+side*.88-.07,maxZ:z+side*.88+.07,minY:0,maxY:3.2});}
@@ -41,7 +41,7 @@ export function attachRoomActions(THREE,world,room){
   addPortalDoor({kind:'classroom',label:'博医教室',x:-24,z:4.8,rotation:Math.PI/2,target:'classroom'});
   world.getPortal=p=>doors.find(door=>door.isPortal(p))?.target||null;
  }
- if(doors.length){const oldUpdate=world.update.bind(world);world.update=(seconds,dt=0)=>{oldUpdate(seconds,dt);for(const door of doors)door.update(dt);};}
+ if(doors.length){const oldUpdate=world.update.bind(world);world.updateDoors=dt=>{for(const door of doors)door.update(dt);};world.update=(seconds,dt=0)=>{oldUpdate(seconds,dt);world.updateDoors(dt);};}
  const oldDispose=world.dispose.bind(world);let disposed=false;
  world.dispose=()=>{if(disposed)return;disposed=true;root.removeFromParent();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());oldDispose();};
  world.setOccupants=occupants=>{const held=new Set(occupants.map(p=>p.heldItemId).filter(Boolean));for(const [id,o]of items)o.visible=!held.has(id);};

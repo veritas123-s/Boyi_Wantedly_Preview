@@ -2,7 +2,7 @@ import {createKeyBindings} from './controls.js?v=e2832aab13b4';
 import {attachSocialPlay} from './social-play.js?v=074dcfdd22ab';
 import {createSocialClient} from './social.js?v=2c7dcf13c156';
 import {createAvatar,getAvatarMetrics} from './avatars.js?v=62a22527fc64';
-import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=4b76df09ef03';
+import {attachRoomActions,createFirstPersonHands} from './room-actions.js?v=77d6f5446aac';
 import {createCinemaPlayer} from './cinema-player.js?v=e5fee4711af9';
 import {createClassroomPlayer} from './classroom-player.js?v=6462e190b406';
 const $ = selector => document.querySelector(selector);
@@ -16,13 +16,15 @@ let quality=getLocal('boyi-cottage-quality',coarse?'smooth':'balanced');if(!allo
 let THREE,renderer,scene,camera,world,raycaster,socialRoot,running=false,initializing=false,frameId=0,lastFrame=0,nextRender=0,elapsed=0,yaw=0,pitch=0,hover=null,lastFocus=null;
 let dragging=null,joy=null,joystick={x:0,z:0},fire=true,night=true,renderFailures=0,social,currentRoom='lobby',switching=null;
 let socialPlay=null,freeLookButton=null,freeLookToggle=false,freeYaw=0,freePitch=0,shakeUntil=0,shakeStarted=0,shakeDuration=0;
-let presentingClassroom=false,readingClassroom=false;
+let presentingClassroom=false,readingClassroom=false,viewYaw=0,viewPitch=0;
 let cinemaPlayer=null,classroomPlayer=null,hands=null,standPending=false,transitActive=false,portalPending=false,cinemaDoorOpen=false,classroomDoorOpen=false,loadPercent=0,lastResolutionChange=0,resolutionScale=1;
 const preparedRooms=new Map();
 const currentInteractables=[],interactionOwners=new WeakMap();
 const connectedRooms=Object.freeze(['cottage','cinema','classroom']);
 const roomRenderCameras=new Map();let preparingViews=false;
-const roomWorlds=new Map(),renderedWorlds=[],worldRanges=[],colliderPool=[],frameColliders=[],pickHits=[],cameraHits=[];
+const roomLayers={lobby:1,cottage:2,cinema:3,classroom:4};
+let portalFrustum,portalBox,viewProjection;
+const roomWorlds=new Map(),renderedWorlds=[],worldRanges=[],colliderPool=[],frameColliders=[],pickHits=[];
 const zeroOrigin=Object.freeze({x:0,y:0,z:0}),defaultBounds=Object.freeze({minX:-5.58,maxX:5.58,minZ:-6.55,maxZ:6.55}),screenCentre=Object.freeze({x:0,y:0});
 const cameraBounds={minX:0,maxX:0,minZ:0,maxZ:0};const currentConnections=[];let currentConnection=null,lastRenderMs=0,framePose=null;
 const frameIntervals=new Float64Array(600);let intervalIndex=0,intervalCount=0,intervalSum=0,adaptiveSum=0,adaptiveCount=0,intervalRevision=0,percentileRevision=-1,lastPercentileRead=0;
@@ -33,7 +35,7 @@ const interactLabel=actionHud.interact.querySelector('span');
 function setHidden(node,hidden){if(node.hidden!==hidden)node.hidden=hidden;}
 function recordInterval(seconds){if(seconds<=0)return;if(intervalCount===frameIntervals.length)intervalSum-=frameIntervals[intervalIndex];else intervalCount++;frameIntervals[intervalIndex]=seconds;intervalIndex=(intervalIndex+1)%frameIntervals.length;intervalSum+=seconds;adaptiveSum+=seconds;adaptiveCount++;intervalRevision++;}
 function performanceStats(){const now=performance.now();if(intervalRevision!==percentileRevision&&now-lastPercentileRead>250){const sorted=Array.from(frameIntervals.subarray(0,intervalCount)).sort((a,b)=>a-b);intervalSummary={samples:intervalCount,p50Ms:(sorted[Math.floor((intervalCount-1)*.5)]||0)*1000,p95Ms:(sorted[Math.ceil((intervalCount-1)*.95)]||0)*1000,meanMs:intervalCount?intervalSum/intervalCount*1000:0,maxMs:(sorted[intervalCount-1]||0)*1000};percentileRevision=intervalRevision;lastPercentileRead=now;}const info=renderer?.info;return{...intervalSummary,windowCapacity:frameIntervals.length,renderCpuMs:lastRenderMs,drawCalls:info?.render.drawCalls||0,triangles:info?.render.triangles||0,resources:{geometries:info?.memory.geometries||0,textures:info?.memory.textures||0,residentRooms:roomWorlds.size},pixelRatio:renderer?.getPixelRatio()||0,drawingBuffer:{width:renderer?.domElement.width||0,height:renderer?.domElement.height||0},antialias:quality!=='smooth'&&quality!=='ultra',shadows:!!renderer?.shadowMap.enabled,hidden:document.hidden,renderPaused:document.hidden||!running,intervalMeaning:'Rendered frame intervals in this browser, not GPU timing'};}
-let player,ownAvatar=null,ownSignature='',viewMode=1,cameraRay,staticSolids=[],cameraTarget,cameraDesired,cameraDirection;
+let player,ownAvatar=null,ownSignature='',viewMode=1,cameraRay,cameraClipBox,cameraHit,cameraTarget,cameraDesired,cameraDirection;
 const viewNames=['','第一人称','第二人称','第三人称'];
 const physics={step:1/120,accumulator:0,seconds:0,steps:0,vx:0,vy:0,vz:0,grounded:true,groundHeight:0,jumps:0,landings:0,maxAirSpeed:0,maxHeight:0,distance:0,collisions:0,droppedSeconds:0,touchJump:false,jumpUntil:0,lastJumpSignal:0};
 let bodyRadius=.31,bodyHeight=1.65;
@@ -108,8 +110,28 @@ function roomOrigin(w=world){return w?.origin||zeroOrigin;}
 function localPose(){const o=roomOrigin();return{x:player.x-o.x,y:eyeY()-(o.y||0),z:player.z-o.z,yaw,pitch,aspect:camera.aspect};}
 function resetPhysics(){physics.vx=physics.vy=physics.vz=physics.accumulator=0;physics.grounded=true;physics.groundHeight=player?.y||0;physics.touchJump=false;physics.jumpUntil=0;}
 function applySpawn(spawn){if(!player||!spawn)return;if(seamlessTransfer?.target===currentRoom){seamlessTransfer=null;return;}const o=roomOrigin(),feet=spawn.participantId&&Number.isFinite(spawn.y)?spawn.y:(spawn.feetY||0);player.set(spawn.x+o.x,Math.max(feet,cinemaExitElevation(spawn))+(o.y||0),spawn.z+o.z);yaw=Number.isFinite(spawn.yaw)?spawn.yaw:0;pitch=0;clearInput();resetPhysics();world?.setViewerPose?.(localPose());world?.update(elapsed,0);updateCamera();}
-function collectCameraSolids(){staticSolids=[];for(const w of activeWorlds()){const fairy=w.appFairy||w.root.getObjectByName('Boyi cloud spirit');w.root.traverse(object=>{if(!object.isMesh)return;for(let n=object;n;n=n.parent)if(n===fairy)return;const materials=Array.isArray(object.material)?object.material:[object.material];if(materials.some(m=>m&&!m.transparent&&m.opacity!==0))staticSolids.push(object);});}}
-function clipCamera(target,desired){desired.x=THREE.MathUtils.clamp(desired.x,cameraBounds.minX+.12,cameraBounds.maxX-.12);desired.z=THREE.MathUtils.clamp(desired.z,cameraBounds.minZ+.12,cameraBounds.maxZ-.12);desired.y=THREE.MathUtils.clamp(desired.y,.65,Math.max(5.8,(world.ceilingHeight||6)-.2));cameraDirection.copy(desired).sub(target);const distance=cameraDirection.length();if(distance>.03){cameraRay.set(target,cameraDirection.multiplyScalar(1/distance));cameraRay.near=.04;cameraRay.far=distance+.15;cameraHits.length=0;cameraRay.intersectObjects(staticSolids,false,cameraHits);const hit=cameraHits.find(h=>h.distance>.04);if(hit&&hit.distance<distance+.15){desired.copy(target).addScaledVector(cameraDirection,Math.max(.06,hit.distance-.16));statistics.cameraObstructions=(statistics.cameraObstructions||0)+1;}}return desired;}
+function clipCamera(target,desired){
+ desired.x=THREE.MathUtils.clamp(desired.x,cameraBounds.minX+.12,cameraBounds.maxX-.12);
+ desired.z=THREE.MathUtils.clamp(desired.z,cameraBounds.minZ+.12,cameraBounds.maxZ-.12);
+ desired.y=THREE.MathUtils.clamp(desired.y,.65,Math.max(5.8,(world.ceilingHeight||6)-.2));
+ cameraDirection.copy(desired).sub(target);
+ const distance=cameraDirection.length();
+ if(distance<=.03)return desired;
+ cameraRay.set(target,cameraDirection.multiplyScalar(1/distance));
+ let nearest=distance+.15;
+ for(const c of frameColliders){
+  if(c.portal)continue;
+  cameraClipBox.min.set(c.minX-.06,c.minY-.06,c.minZ-.06);
+  cameraClipBox.max.set(c.maxX+.06,Number.isFinite(c.maxY)?c.maxY+.06:7,c.maxZ+.06);
+  if(cameraClipBox.containsPoint(target))continue;
+  if(cameraRay.intersectBox(cameraClipBox,cameraHit))nearest=Math.min(nearest,target.distanceTo(cameraHit));
+ }
+ if(nearest<distance+.15){
+  desired.copy(target).addScaledVector(cameraDirection,Math.max(.06,nearest-.16));
+  statistics.cameraObstructions=(statistics.cameraObstructions||0)+1;
+ }
+ return desired;
+}
 function syncClassroomPresentation(){
  const active=currentRoom==='classroom'&&!!world?.stats.presentationAttached,reading=active&&!!(framePose||social?.getPose())?.seatId&&viewMode===1;
  if(active!==presentingClassroom){presentingClassroom=active;document.body.classList.toggle('classroom-presenting',active);
@@ -117,8 +139,8 @@ function syncClassroomPresentation(){
  }
  if(reading!==readingClassroom){readingClassroom=reading;document.body.classList.toggle('classroom-reading',reading);}
 }
-function updateCamera(){
- if(!camera||!player||!world)return;syncClassroomPresentation();world.root.updateWorldMatrix(true,true);
+function updateCamera(dt=Infinity){
+ if(!camera||!player||!world)return;syncClassroomPresentation();
  if(currentRoom==='cinema'&&cinemaPlayer?.isInteracting()){
   const screen=world.root.getObjectByName('Cinema screen');
   screen.getWorldPosition(cameraTarget);
@@ -131,7 +153,11 @@ function updateCamera(){
  }
  if(camera.zoom!==1){camera.zoom=1;camera.updateProjectionMatrix();}
 
- const lookYaw=yaw+freeYaw,lookPitch=THREE.MathUtils.clamp(pitch+freePitch,-1.3,1.3),fairy=world.appFairy,small=social?.getSelf()?.avatarId==='naidan',m=currentAvatarMetrics(),pose=framePose||social?.getPose(),seat=pose?.seatId?(pose.seatHeight||.55):0,centre=small?seat+m.height*.6:1.06;
+ const yawTarget=yaw+freeYaw,pitchTarget=THREE.MathUtils.clamp(pitch+freePitch,-1.3,1.3);
+ const blend=1-Math.exp(-dt/.025);
+ const delta=Math.atan2(Math.sin(yawTarget-viewYaw),Math.cos(yawTarget-viewYaw));
+ viewYaw+=delta*blend;viewPitch+=(pitchTarget-viewPitch)*blend;
+ const lookYaw=viewYaw,lookPitch=viewPitch,fairy=world.appFairy,small=social?.getSelf()?.avatarId==='naidan',m=currentAvatarMetrics(),pose=framePose||social?.getPose(),seat=pose?.seatId?(pose.seatHeight||.55):0,centre=small?seat+m.height*.6:1.06;
  for(const w of renderedWorlds)if(w.appFairy)w.appFairy.visible=w===world&&viewMode!==2&&!(currentRoom==='classroom'&&presentingClassroom);
  const baseY=player.y+seatElevation(pose);
  if(viewMode===1){camera.position.set(player.x,eyeY(),player.z);camera.rotation.set(lookPitch,lookYaw,0,'YXZ');}
@@ -147,7 +173,6 @@ function updateCamera(){
 }
 function updateOwnAvatar(t,moving){const identity=social?.getSelf(),avatarId=identity?.avatarId||'visitor',variant=identity?.variant||0,signature=avatarId+':'+variant;if(signature!==ownSignature){ownAvatar?.dispose();ownAvatar=createAvatar(THREE,{avatarId,variant,name:'我',quality});ownAvatar.root.name='Own Boyi avatar';ownAvatar.root.children[1].visible=false;scene.add(ownAvatar.root);ownSignature=signature;}const pose=framePose||social?.getPose()||{};ownAvatar.root.position.set(player.x,player.y+seatElevation(pose),player.z);ownAvatar.root.rotation.y=(pose.seatId?pose.yaw:yaw)+Math.PI;ownAvatar.root.visible=viewMode!==1;ownAvatar.update(t,camera,moving,pose);hands?.update(pose.heldKind,t,viewMode===1,pose);setHidden(actionHud.stand,!pose.seatId);setHidden(actionHud.sit,!!pose.seatId);setHidden(actionHud.drop,!pose.heldItemId);setHidden(actionHud.pickup,!!pose.heldItemId);}
 function roomBounds(w=world){const o=roomOrigin(w),b=w?.bounds||defaultBounds;return{minX:b.minX+o.x,maxX:b.maxX+o.x,minZ:b.minZ+o.z,maxZ:b.maxZ+o.z};}
-function activeWorlds(){return renderedWorlds;}
 function refreshWorldCache(){
  currentInteractables.length=0;for(const item of world?.interactables||[]){currentInteractables.push(item);interactionOwners.set(item,world);}
  const doorId=currentRoom==='cinema'?'cinema-door-toggle':currentRoom==='classroom'?'classroom-door-toggle':null;
@@ -239,39 +264,80 @@ function tryWalkingPortal(){
   portalPending=true;seamlessTransfer={target:c.target,from:currentRoom};const before={x:player.x,y:player.y,z:player.z};social.enterRoom(c.target).then(ok=>{if(!ok){player.set(before.x,before.y,before.z);resetPhysics();seamlessTransfer=null;}else statistics.seamlessCrossings=(statistics.seamlessCrossings||0)+1;}).catch(()=>{player.set(before.x,before.y,before.z);resetPhysics();seamlessTransfer=null;}).finally(()=>portalPending=false);return;
  }
 }
-function pick(){if(viewMode===1)raycaster.setFromCamera(screenCentre,camera);else{const lookYaw=yaw+freeYaw,lookPitch=THREE.MathUtils.clamp(pitch+freePitch,-1.3,1.3);cameraTarget.set(player.x,eyeY(),player.z);cameraDirection.set(-Math.sin(lookYaw)*Math.cos(lookPitch),Math.sin(lookPitch),-Math.cos(lookYaw)*Math.cos(lookPitch));raycaster.set(cameraTarget,cameraDirection);}let picked=null,distance=3.4;for(const item of currentInteractables){if(item.id==='sprite'&&(viewMode===2||presentingClassroom))continue;pickHits.length=0;raycaster.intersectObject(item.object,true,pickHits);if(pickHits[0]&&pickHits[0].distance<distance){distance=pickHits[0].distance;picked=item;}}const person=social?.pick(raycaster);if(person){personHover.person=person;personHover.label='和'+person.nickname+'聊聊';picked=personHover;}hover=picked;setHidden(actionHud.interact,!picked);if(picked&&interactLabel.textContent!==picked.label)interactLabel.textContent=picked.label;if(actionHud.mobile.disabled!==!picked)actionHud.mobile.disabled=!picked;}
+function pick(){if(viewMode===1)raycaster.setFromCamera(screenCentre,camera);else{const lookYaw=viewYaw,lookPitch=viewPitch;cameraTarget.set(player.x,eyeY(),player.z);cameraDirection.set(-Math.sin(lookYaw)*Math.cos(lookPitch),Math.sin(lookPitch),-Math.cos(lookYaw)*Math.cos(lookPitch));raycaster.set(cameraTarget,cameraDirection);}let picked=null,distance=3.4;for(const item of currentInteractables){if(item.id==='sprite'&&(viewMode===2||presentingClassroom))continue;pickHits.length=0;raycaster.intersectObject(item.object,true,pickHits);if(pickHits[0]&&pickHits[0].distance<distance){distance=pickHits[0].distance;picked=item;}}const person=social?.pick(raycaster);if(person){personHover.person=person;personHover.label='和'+person.nickname+'聊聊';picked=personHover;}hover=picked;setHidden(actionHud.interact,!picked);if(picked&&interactLabel.textContent!==picked.label)interactLabel.textContent=picked.label;if(actionHud.mobile.disabled!==!picked)actionHud.mobile.disabled=!picked;}
 function interact(){if(transitActive||switching||!hover||dialog.open)return;if(hover.person){social?.openChat(hover.person);return;}if(hover.id==='seat'){social?.action('sit',hover.seatId);return;}if(hover.id==='item'){social?.action('pickup',hover.itemId);return;}if(hover.id==='elevator'||hover.id==='elevator-return'){rideElevator(currentRoom==='lobby'?'cottage':'lobby');return;}if(hover.id==='cinema-door-toggle'){social?.toggleCinemaDoor();return;}if(hover.id==='classroom-door-toggle'){social?.toggleClassroomDoor?.();return;}openPanel(hover.id,$('#interact'));}
 function setLoad(value,label){loadPercent=Math.max(loadPercent,Math.min(100,Math.round(value)));$('#transit-label').textContent=label;$('#transit-percent').textContent=loadPercent+'%';$('#transit-progress').value=loadPercent;statistics.loading={percent:loadPercent,label};}
 function tween(duration,step){return new Promise(resolve=>{const begin=performance.now();function tick(now){const p=Math.min(1,(now-begin)/duration);step(p*p*(3-2*p));if(p<1)requestAnimationFrame(tick);else resolve();}requestAnimationFrame(tick);});}
-async function prepareRoom(room){if(preparedRooms.has(room))return preparedRooms.get(room);const pending=(async()=>{const loadStarted=performance.now(),timing={state:'importing',moduleMs:0,buildMs:0,compileMs:0,totalMs:0};(statistics.roomLoads??={})[room]=timing;if(transitActive)setLoad(5,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');const module=await import(room==='classroom'?'./classroom.js?v=500dc1cd21fb':room==='cinema'?'./cinema.js?v=7c0518193fa6':room==='cottage'?'./scene.js?v=e855fc0787d7':'./lobby.js?v=61fc35ac8269');const buildBegin=performance.now();timing.moduleMs=buildBegin-loadStarted;timing.state='building';if(transitActive)setLoad(25,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');const staging=new THREE.Scene();staging.fog=scene.fog;staging.background=scene.background;const create=room==='classroom'?module.createClassroomScene:room==='cinema'?module.createCinemaScene:room==='cottage'?module.createCottageScene:module.createLobbyScene;const next=attachRoomActions(THREE,create(THREE,staging,{textures,quality,reduced}),room),o=roomOrigin(next);next.root.position.set(o.x,o.y||0,o.z);next.setSharedLighting?.();next.setCinemaDoor?.(cinemaDoorOpen);next.setClassroomDoor?.(classroomDoorOpen);const warmCamera=camera.clone();warmCamera.position.set(next.spawn.x+o.x,1.65+(o.y||0),next.spawn.z+o.z);warmCamera.rotation.set(0,next.spawn.yaw||0,0);next.setViewerPose?.({x:next.spawn.x,y:1.65,z:next.spawn.z,yaw:next.spawn.yaw||0,pitch:0,aspect:camera.aspect});next.update(0,0);if(transitActive)setLoad(55,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');const compileBegin=performance.now();timing.buildMs=compileBegin-buildBegin;timing.state='compiling';try{await renderer.compileAsync(staging,warmCamera);timing.compileMs=performance.now()-compileBegin;timing.totalMs=performance.now()-loadStarted;timing.state='ready';roomWorlds.set(room,next);if(transitActive)setLoad(95,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');return next;}catch(error){timing.state='failed';timing.totalMs=performance.now()-loadStarted;next.dispose();throw error;}})();preparedRooms.set(room,pending);try{return await pending;}catch(error){preparedRooms.delete(room);throw error;}}
+async function prepareRoom(room){if(preparedRooms.has(room))return preparedRooms.get(room);const pending=(async()=>{const loadStarted=performance.now(),timing={state:'importing',moduleMs:0,buildMs:0,compileMs:0,totalMs:0};(statistics.roomLoads??={})[room]=timing;if(transitActive)setLoad(5,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');const module=await import(room==='classroom'?'./classroom.js?v=500dc1cd21fb':room==='cinema'?'./cinema.js?v=7c0518193fa6':room==='cottage'?'./scene.js?v=e855fc0787d7':'./lobby.js?v=61fc35ac8269');const buildBegin=performance.now();timing.moduleMs=buildBegin-loadStarted;timing.state='building';if(transitActive)setLoad(25,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');const staging=new THREE.Scene();staging.fog=scene.fog;staging.background=scene.background;const create=room==='classroom'?module.createClassroomScene:room==='cinema'?module.createCinemaScene:room==='cottage'?module.createCottageScene:module.createLobbyScene;const next=attachRoomActions(THREE,create(THREE,staging,{textures,quality,reduced}),room),o=roomOrigin(next);next.root.position.set(o.x,o.y||0,o.z);next.setSharedLighting?.();next.setCinemaDoor?.(cinemaDoorOpen);next.setClassroomDoor?.(classroomDoorOpen);next.root.traverse(object=>{if(object.isMesh)object.layers.set(roomLayers[room]);if(object.userData.portalRoom)object.traverse(part=>{if(part.isMesh)part.userData.portalRoomLayer=roomLayers[object.userData.portalRoom];});if(object.isMesh&&object.userData.portalRoomLayer)object.layers.enable(object.userData.portalRoomLayer);});const warmCamera=camera.clone();warmCamera.layers.enableAll();warmCamera.position.set(next.spawn.x+o.x,1.65+(o.y||0),next.spawn.z+o.z);warmCamera.rotation.set(0,next.spawn.yaw||0,0);next.setViewerPose?.({x:next.spawn.x,y:1.65,z:next.spawn.z,yaw:next.spawn.yaw||0,pitch:0,aspect:camera.aspect});next.update(0,0);if(transitActive)setLoad(55,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');const compileBegin=performance.now();timing.buildMs=compileBegin-buildBegin;timing.state='compiling';try{await renderer.compileAsync(staging,warmCamera);timing.compileMs=performance.now()-compileBegin;timing.totalMs=performance.now()-loadStarted;timing.state='ready';roomWorlds.set(room,next);if(transitActive)setLoad(95,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');return next;}catch(error){timing.state='failed';timing.totalMs=performance.now()-loadStarted;next.dispose();throw error;}})();preparedRooms.set(room,pending);try{return await pending;}catch(error){preparedRooms.delete(room);throw error;}}
 async function rideElevator(target){if(transitActive||switching)return;if(target==='cottage'&&!social?.getSelf()?.canEnterCottage){openPanel('gate');return;}transitActive=true;loadPercent=0;clearInput();if(dialog.open)closePanel();if(document.pointerLockElement)document.exitPointerLock();hud.inert=true;$('#transit').hidden=false;$('#transit').dataset.phase='boarding';$('#floor-from').textContent=target==='cottage'?'1F':'2F';$('#floor-to').textContent=target==='cottage'?'2F':'1F';setLoad(0,target==='cottage'?'博医小屋加载中':'会客大厅加载中');let completed=false;try{if(social.getSelf()?.seatId)await social.action('stand');const rawCabin=world.elevator?.cabin,origin=roomOrigin(),cabin=rawCabin?{...rawCabin,x:rawCabin.x+origin.x,z:rawCabin.z+origin.z}:null,start={x:player.x,z:player.z,yaw};world.setElevatorState?.({doors:1,floor:target==='cottage'?1:2,moving:false});if(cabin)await tween(reduced?120:700,p=>{player.x=start.x+(cabin.x-start.x)*p;player.z=start.z+(cabin.z-start.z)*p;yaw=start.yaw+(cabin.yaw-start.yaw)*p;});await tween(reduced?100:650,p=>world.setElevatorState?.({doors:1-p,floor:target==='cottage'?1:2,moving:false}));$('#transit').dataset.phase='travelling';world.setElevatorState?.({doors:0,floor:target==='cottage'?1:2,moving:true});await Promise.all([(async()=>{await prepareRoom(target);if(connectedRooms.includes(target)){await Promise.all(connectedRooms.map(prepareRoom));await warmConnectedViews(target);}})(),tween(reduced?150:1400,p=>{$('#transit').style.setProperty('--travel',p);})]);completed=await social.enterRoom(target);if(!completed)throw Error('ElevatorEntryRefused');const arrived=world.elevator,arrivedOrigin=roomOrigin(),landed={x:player.x,z:player.z};if(arrived?.cabin){resetPhysics();yaw=arrived.cabin.yaw;updateCamera();}world.setElevatorState?.({doors:0,floor:target==='cottage'?2:1,moving:false});setLoad(100,target==='cottage'?'博医小屋加载中':'会客大厅加载中');$('#transit').dataset.phase='arriving';await tween(reduced?100:650,p=>world.setElevatorState?.({doors:p,floor:target==='cottage'?2:1,moving:false}));if(arrived?.entry&&arrived?.cabin)await tween(reduced?120:700,p=>{player.x=landed.x+(arrivedOrigin.x+arrived.entry.x-landed.x)*p;player.z=landed.z+(arrivedOrigin.z+arrived.entry.z-landed.z)*p;});}catch(error){statistics.transitionError=error.name;notify('电梯暂时未能抵达，请稍后再试');world.setElevatorState?.({doors:1,floor:currentRoom==='lobby'?1:2,moving:false});}finally{$('#transit').hidden=true;hud.inert=false;transitActive=false;clearInput();if(completed)notify(target==='cottage'?'二楼到了，欢迎来到博医小屋':'一楼到了，欢迎回到会客大厅');}}
 $('#interact').onclick=interact;$('#mobile-interact').onclick=interact;
 function frame(time){
  frameId=0;if(!running||document.hidden)return;
- if(lastFrame&&time<nextRender){frameId=requestAnimationFrame(frame);return;}
+ if(lastFrame&&time<nextRender-.8){frameId=requestAnimationFrame(frame);return;}
  nextRender=(!lastFrame||time>nextRender+100)?time+1000/60:nextRender+1000/60;
+ const workStart=performance.now();
  const rawDt=lastFrame?(time-lastFrame)/1000:0,dt=Math.min(rawDt,.05);lastFrame=time;elapsed+=Math.min(rawDt,.25);settleFreeLook(dt);
  if(switching||preparingViews){if(preparingViews&&!switching)social?.update(elapsed,dt);frameId=requestAnimationFrame(frame);return;}
  framePose=social?.getPose()||null;
  const allowInput=!dialog.open&&!switching&&!transitActive,moving=!switching&&!transitActive&&!portalPending?move(rawDt,allowInput):false;
- const eye=eyeY();for(const w of renderedWorlds){const o=roomOrigin(w),pose=w.appViewerPose;pose.x=player.x-o.x;pose.y=eye-(o.y||0);pose.z=player.z-o.z;pose.yaw=yaw;pose.pitch=pitch;pose.aspect=camera.aspect;w.setViewerPose?.(pose);w.update(elapsed,dt);}
- cinemaPlayer?.update();updateOwnAvatar(elapsed,moving);updateCamera();social?.update(elapsed,dt);
+ const eye=eyeY();for(const w of renderedWorlds){if(w!==world){if(w===roomWorlds.get('cottage'))w.updateDoors?.(dt);continue;}const o=roomOrigin(w),pose=w.appViewerPose;pose.x=player.x-o.x;pose.y=eye-(o.y||0);pose.z=player.z-o.z;pose.yaw=yaw;pose.pitch=pitch;pose.aspect=camera.aspect;w.setViewerPose?.(pose);w.update(elapsed,dt);}
+ cinemaPlayer?.update();updateOwnAvatar(elapsed,moving);updateCamera(dt);social?.update(elapsed,dt);
  if(allowInput){pick();tryWalkingPortal();}
- try{const renderBegin=performance.now();renderer.info.reset();const renderCamera=roomRenderCamera();cinemaPlayer?.project(currentRoom==='cinema'?world:null,renderCamera,innerWidth,innerHeight);renderer.render(scene,renderCamera);lastRenderMs=performance.now()-renderBegin;renderFailures=0;}catch(error){if(++renderFailures>2){framePose=null;failScene('画面暂时中断，你仍可使用屋内去处');return;}}
- framePose=null;statistics.frames++;
+ try{const renderBegin=performance.now();renderer.info.reset();const measureGpu=beginGpuSample(time);const renderCamera=roomRenderCamera();cinemaPlayer?.project(currentRoom==='cinema'?world:null,renderCamera,innerWidth,innerHeight);renderer.render(scene,renderCamera);if(measureGpu)endGpuSample();lastRenderMs=performance.now()-renderBegin;renderFailures=0;}catch(error){if(renderer.backend?.trackTimestamp)renderer.backend.trackTimestamp=false;if(++renderFailures>2){framePose=null;failScene('画面暂时中断，你仍可使用屋内去处');return;}}
+ framePose=null;statistics.frames++;updatePerformancePanel(time,performance.now()-workStart);
  recordInterval(rawDt);if(!transitActive&&!switching&&adaptiveCount>=150&&time-lastResolutionChange>6000){const avg=adaptiveSum/adaptiveCount;if(avg>.025&&resolutionScale>.65){resolutionScale=Math.max(.65,resolutionScale-.1);resize();}else if(avg<.0175&&resolutionScale<1){resolutionScale=Math.min(1,resolutionScale+.05);resize();}lastResolutionChange=time;adaptiveSum=adaptiveCount=0;statistics.resolutionScale=resolutionScale;}frameId=requestAnimationFrame(frame);
 }
 function schedule(){if(running&&!document.hidden&&!frameId){lastFrame=0;frameId=requestAnimationFrame(frame);}}
+const perfPanel=$('#performance-panel'),perfToggle=$('#show-performance');
+let perfAt=0,gpuAt=0,gpuPending=false,gpuMs=null,gpuAvailable=false;
+perfToggle.checked=getLocal('boyi-cottage-performance','0')==='1';
+perfPanel.hidden=!perfToggle.checked;
+perfToggle.onchange=()=>{perfPanel.hidden=!perfToggle.checked;setLocal('boyi-cottage-performance',perfToggle.checked?'1':'0');};
+function beginGpuSample(time){
+ if(perfPanel.hidden||!gpuAvailable||gpuPending||time-gpuAt<900)return false;
+ gpuAt=time;renderer.backend.trackTimestamp=true;return true;
+}
+function endGpuSample(){
+ gpuPending=true;
+ renderer.resolveTimestampsAsync().then(value=>{if(Number.isFinite(value))gpuMs=value;}).catch(()=>{gpuAvailable=false;}).finally(()=>gpuPending=false);
+ renderer.backend.trackTimestamp=false;
+}
+function updatePerformancePanel(time,cpuMs){
+ if(perfPanel.hidden||time-perfAt<500)return;
+ perfAt=time;
+ const p=performanceStats(),heap=performance.memory?.usedJSHeapSize;
+ $('#perf-fps').textContent=p.meanMs?(1000/p.meanMs).toFixed(0)+' FPS · P95 '+p.p95Ms.toFixed(1)+' ms':'采样中';
+ $('#perf-cpu').textContent=cpuMs.toFixed(1)+' ms / 帧（网页）';
+ $('#perf-gpu').textContent=(statistics.backend==='webgpu'?'WebGPU':'WebGL 2')+' · '+(gpuMs!==null?gpuMs.toFixed(1)+' ms / 采样帧':gpuAvailable?'采样中':'计时不可用');
+ $('#perf-ram').textContent=Number.isFinite(heap)?(heap/1048576).toFixed(0)+' MiB（网页 JS 堆）':'网页内存不可用';
+ $('#perf-draw').textContent=p.drawCalls+' 次绘制 · '+p.drawingBuffer.width+' × '+p.drawingBuffer.height;
+}
 function failScene(message){running=false;transitActive=false;$('#transit').hidden=true;hud.inert=false;for(const pending of preparedRooms.values())pending.then(w=>w.dispose()).catch(()=>{});preparedRooms.clear();if(frameId)cancelAnimationFrame(frameId);frameId=0;try{socialPlay?.dispose();socialPlay=null;social?.leave();}catch(error){statistics.cleanupError=error.name;}try{cinemaPlayer?.clear();classroomPlayer?.dispose();}catch(error){statistics.mediaCleanupError=error.name;}statistics.realtimeStopped=true;clearInput();if(document.pointerLockElement)document.exitPointerLock();arrival.hidden=true;hud.hidden=true;$('#no-gpu').hidden=false;$('#no-gpu p').textContent=message;statistics.ready=false;}
 async function loadTextures(){
  const loader=new THREE.TextureLoader();const base='../media/cottage/';const maps={woodColor:'wood-color.jpg',woodNormal:'wood-normal.jpg',woodRoughness:'wood-roughness.jpg',stoneColor:'stone-color.jpg',stoneNormal:'stone-normal.jpg',stoneRoughness:'stone-roughness.jpg',schoolLogo:'../brand/shsmu-mark.webp',boyiLogo:'../brand/boyi-mark.webp'};
  await Promise.all(Object.entries(maps).map(async([key,file])=>{if(quality==='ultra'&&(key.endsWith('Normal')||key.endsWith('Roughness')))return;try{const t=await loader.loadAsync(base+file);if(key.endsWith('Color')||key.endsWith('Logo'))t.colorSpace=THREE.SRGBColorSpace;if(!key.endsWith('Logo'))t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=quality==='ultra'?1:quality==='smooth'?2:4;textures[key]=t;}catch{statistics.textureFailures.push(file);}}));
 }
 // Keep Three's room-lighting render contexts cached while the input camera stays stable.
-function roomRenderCamera(room=currentRoom){
+function roomRenderCamera(room=currentRoom,all=false){
  if(camera.coordinateSystem!==renderer.coordinateSystem){camera.coordinateSystem=renderer.coordinateSystem;camera.updateProjectionMatrix();}
  let renderCamera=roomRenderCameras.get(room);if(!renderCamera){renderCamera=camera.clone(false);renderCamera.matrixAutoUpdate=false;renderCamera.matrixWorldAutoUpdate=false;roomRenderCameras.set(room,renderCamera);}
- renderCamera.position.copy(camera.position);renderCamera.quaternion.copy(camera.quaternion);renderCamera.scale.copy(camera.scale);renderCamera.matrix.copy(camera.matrix);renderCamera.matrixWorld.copy(camera.matrixWorld);renderCamera.matrixWorldInverse.copy(camera.matrixWorldInverse);renderCamera.projectionMatrix.copy(camera.projectionMatrix);renderCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);renderCamera.layers.mask=camera.layers.mask;renderCamera.near=camera.near;renderCamera.far=camera.far;renderCamera.aspect=camera.aspect;renderCamera.fov=camera.fov;renderCamera.coordinateSystem=camera.coordinateSystem;return renderCamera;
+ renderCamera.position.copy(camera.position);renderCamera.quaternion.copy(camera.quaternion);renderCamera.scale.copy(camera.scale);renderCamera.matrix.copy(camera.matrix);renderCamera.matrixWorld.copy(camera.matrixWorld);renderCamera.matrixWorldInverse.copy(camera.matrixWorldInverse);renderCamera.projectionMatrix.copy(camera.projectionMatrix);renderCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);renderCamera.layers.mask=camera.layers.mask;renderCamera.near=camera.near;renderCamera.far=camera.far;renderCamera.aspect=camera.aspect;renderCamera.fov=camera.fov;renderCamera.coordinateSystem=camera.coordinateSystem;
+ renderCamera.layers.set(0);
+ if(all){for(const layer of Object.values(roomLayers))renderCamera.layers.enable(layer);}
+ else{
+  renderCamera.layers.enable(roomLayers[room]);
+  viewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+  portalFrustum.setFromProjectionMatrix(viewProjection,camera.coordinateSystem);
+  for(const connection of currentConnections){
+   if(!connectionOpen(connection))continue;
+   const {axis,other,threshold,span,target}=connection;
+   portalBox.min.set(0,0,0);portalBox.max.set(0,3.2,0);
+   portalBox.min[axis]=threshold-.25;portalBox.max[axis]=threshold+.25;
+   portalBox.min[other]=span[0]-.1;portalBox.max[other]=span[1]+.1;
+   if(portalFrustum.intersectsBox(portalBox))renderCamera.layers.enable(roomLayers[target]);
+  }
+ }
+ return renderCamera;
 }
 const warmedRoomViews=new Set();
 async function warmConnectedViews(room){
@@ -282,16 +348,16 @@ async function warmConnectedViews(room){
  if(ownAvatar){ownAvatar.root.visible=true;ownAvatar.root.traverse(object=>{if(object.isMesh&&object.frustumCulled){culling.push(object);object.frustumCulled=false;}});}
  try{for(const id of connectedRooms){if(warmedRoomViews.has(id))continue;const candidate=roomWorlds.get(id);if(!candidate)continue;const timing={compileMs:0,renderMs:0,totalMs:0},begin=performance.now();(statistics.roomWarmups??={})[id]=timing;
   for(const w of roomWorlds.values()){w.setCompanionActive?.(w===candidate);if(w.appFairy)w.appFairy.visible=w===candidate&&viewMode!==2;}
-  const compiled=performance.now();await renderer.compileAsync(scene,roomRenderCamera(id));timing.compileMs=performance.now()-compiled;timing.totalMs=performance.now()-begin;warmedRoomViews.add(id);
+  const compiled=performance.now();await renderer.compileAsync(scene,roomRenderCamera(id,true));timing.compileMs=performance.now()-compiled;timing.totalMs=performance.now()-begin;warmedRoomViews.add(id);
   await new Promise(resolve=>requestAnimationFrame(resolve));
  }}finally{for(const object of culling)object.frustumCulled=true;for(const[id,w]of roomWorlds){w.root.visible=currentRoom==='lobby'?id==='lobby':id!=='lobby';w.setCompanionActive?.(w===world);}if(ownAvatar)ownAvatar.root.visible=avatarVisible;preparingViews=false;updateCamera();}
 }
-async function switchRoom(room){if(room===currentRoom&&world)return;if(switching)await switching;if(room===currentRoom&&world)return;switching=(async()=>{const seamless=seamlessTransfer?.target===room,switchStarted=performance.now(),timing={room,seamless,prepareMs:0,sceneCompileMs:0,firstRenderMs:0,totalMs:0};statistics.lastRoomSwitch=timing;if(!seamless)clearInput();if(currentRoom==='classroom'&&room!=='classroom')classroomPlayer?.clear();hover=null;$('#interact').hidden=true;const next=await prepareRoom(room);if(connectedRooms.includes(room))await Promise.all(connectedRooms.map(prepareRoom));timing.prepareMs=performance.now()-switchStarted;for(const[id,w]of roomWorlds){if(w.root.parent!==scene)scene.add(w.root);w.root.visible=room==='lobby'?id==='lobby':id!=='lobby';w.setCinemaDoor?.(cinemaDoorOpen);w.setClassroomDoor?.(classroomDoorOpen);}if(seamless&&viewMode===2){companionCameraFrom.copy(camera.position);companionCameraStarted=performance.now();}else companionCameraStarted=-Infinity;world=next;currentRoom=room;refreshWorldCache();const o=roomOrigin();socialRoot?.position.set(o.x,o.y||0,o.z);collectCameraSolids();if(!seamless)applySpawn(world.spawn);Object.assign(statistics,world.stats);if(dialog.open)closePanel();$('#cinema-controls').hidden=room!=='cinema';updateCamera();const warmViewsBegin=performance.now();await warmConnectedViews(room);timing.warmViewsMs=performance.now()-warmViewsBegin;const liveCompileBegin=performance.now();if(!warmedRoomViews.has(room))await renderer.compileAsync(scene,roomRenderCamera());timing.sceneCompileMs=performance.now()-liveCompileBegin;const renderBegin=performance.now();renderer.render(scene,roomRenderCamera());timing.firstRenderMs=performance.now()-renderBegin;timing.totalMs=performance.now()-switchStarted;if(transitActive)setLoad(100,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');if(!transitActive&&!seamless)notify(room==='classroom'?'教室到了，找个座位开始这一堂课':room==='cinema'?'选个座位，和大家一起看电影':room==='cottage'?'欢迎来到博医小屋':'回到会客大厅');})();try{await switching;}catch(error){if(running)failScene('场景加载失败，请重新进入');throw error;}finally{switching=null;}}
+async function switchRoom(room){if(room===currentRoom&&world)return;if(switching)await switching;if(room===currentRoom&&world)return;switching=(async()=>{const seamless=seamlessTransfer?.target===room,switchStarted=performance.now(),timing={room,seamless,prepareMs:0,sceneCompileMs:0,firstRenderMs:0,totalMs:0};statistics.lastRoomSwitch=timing;if(!seamless)clearInput();if(currentRoom==='classroom'&&room!=='classroom')classroomPlayer?.clear();hover=null;$('#interact').hidden=true;const next=await prepareRoom(room);if(connectedRooms.includes(room))await Promise.all(connectedRooms.map(prepareRoom));timing.prepareMs=performance.now()-switchStarted;for(const[id,w]of roomWorlds){if(w.root.parent!==scene)scene.add(w.root);w.root.visible=room==='lobby'?id==='lobby':id!=='lobby';w.setCinemaDoor?.(cinemaDoorOpen);w.setClassroomDoor?.(classroomDoorOpen);}if(seamless&&viewMode===2){companionCameraFrom.copy(camera.position);companionCameraStarted=performance.now();}else companionCameraStarted=-Infinity;world=next;currentRoom=room;refreshWorldCache();const o=roomOrigin();socialRoot?.position.set(o.x,o.y||0,o.z);collisionBoxes();if(!seamless)applySpawn(world.spawn);Object.assign(statistics,world.stats);if(dialog.open)closePanel();$('#cinema-controls').hidden=room!=='cinema';updateCamera();const warmViewsBegin=performance.now();await warmConnectedViews(room);timing.warmViewsMs=performance.now()-warmViewsBegin;const liveCompileBegin=performance.now();if(!warmedRoomViews.has(room))await renderer.compileAsync(scene,roomRenderCamera());timing.sceneCompileMs=performance.now()-liveCompileBegin;const renderBegin=performance.now();renderer.render(scene,roomRenderCamera());timing.firstRenderMs=performance.now()-renderBegin;timing.totalMs=performance.now()-switchStarted;if(transitActive)setLoad(100,room!=='lobby'?'博医小屋加载中':'会客大厅加载中');if(!transitActive&&!seamless)notify(room==='classroom'?'教室到了，找个座位开始这一堂课':room==='cinema'?'选个座位，和大家一起看电影':room==='cottage'?'欢迎来到博医小屋':'回到会客大厅');})();try{await switching;}catch(error){if(running)failScene('场景加载失败，请重新进入');throw error;}finally{switching=null;}}
 async function start(){if(initializing||running)return;initializing=true;enter.disabled=true;$('#load-status').textContent=directEntry?'正在进入场景…':'正在准备会客大厅…';
  try{
   THREE=await import('../vendor/three/three.webgpu.js?v=c6b225365368');
   renderer=new THREE.WebGPURenderer({antialias:quality!=='smooth'&&quality!=='ultra',powerPreference:'high-performance',forceWebGL:new URLSearchParams(location.search).get('renderer')==='webgl',alpha:true});
-  await renderer.init();
+  await renderer.init();gpuAvailable=renderer.hasFeature('timestamp-query');
   renderer.onDeviceLost=info=>{
    if(info?.reason==='destroyed'||(!running&&!initializing))return;
    if(renderer.backend?.isWebGPUBackend&&new URLSearchParams(location.search).get('renderer')!=='webgl'){
@@ -299,7 +365,7 @@ async function start(){if(initializing||running)return;initializing=true;enter.d
    }else failScene('绘图连接已中断，请重新进入小屋');
   };
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;renderer.info.autoReset=false;renderer.shadowMap.enabled=quality!=='smooth'&&quality!=='ultra';renderer.shadowMap.type=THREE.PCFShadowMap;view.append(renderer.domElement);
-  scene=new THREE.Scene();scene.background=new THREE.Color('#26333a');scene.fog=new THREE.Fog('#293133',18,65);camera=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.08,100);scene.add(camera);socialRoot=new THREE.Group();socialRoot.name='Current room participants';scene.add(socialRoot);hands=createFirstPersonHands(THREE,camera);raycaster=new THREE.Raycaster();cameraRay=new THREE.Raycaster();player=new THREE.Vector3();cameraTarget=new THREE.Vector3();cameraDesired=new THREE.Vector3();cameraDirection=new THREE.Vector3();companionCameraFrom=new THREE.Vector3();
+  scene=new THREE.Scene();scene.background=new THREE.Color('#26333a');scene.fog=new THREE.Fog('#293133',18,65);camera=new THREE.PerspectiveCamera(68,innerWidth/innerHeight,.08,100);scene.add(camera);socialRoot=new THREE.Group();socialRoot.name='Current room participants';scene.add(socialRoot);hands=createFirstPersonHands(THREE,camera);raycaster=new THREE.Raycaster();raycaster.layers.enableAll();portalFrustum=new THREE.Frustum();portalBox=new THREE.Box3();viewProjection=new THREE.Matrix4();cameraRay=new THREE.Ray();cameraClipBox=new THREE.Box3();cameraHit=new THREE.Vector3();player=new THREE.Vector3();cameraTarget=new THREE.Vector3();cameraDesired=new THREE.Vector3();cameraDirection=new THREE.Vector3();companionCameraFrom=new THREE.Vector3();
   await loadTextures();await switchRoom('lobby');resize();world.update(0,0);
   await renderer.compileAsync(scene,roomRenderCamera());renderer.render(scene,roomRenderCamera());
   statistics.backend=renderer.backend?.isWebGPUBackend?'webgpu':'webgl2';statistics.ready=true;Object.assign(statistics,world.stats);if(!directEntry){arrival.hidden=true;hud.hidden=false;}running=true;bindView();const socialPlayer={get x(){return player.x-roomOrigin().x;},get y(){return player.y-(roomOrigin().y||0);},get z(){return player.z-roomOrigin().z;}};social=createSocialClient({THREE,scene:socialRoot,camera,player:socialPlayer,quality,getSeatElevation:pose=>seatElevation(pose)||cinemaExitElevation(pose),canSyncMovement:()=>!transitActive,getYaw:()=>yaw,getMovement:()=>({y:player.y-(roomOrigin().y||0),velocityX:physics.vx,velocityY:physics.vy,velocityZ:physics.vz,grounded:physics.grounded}),onSpawn:applySpawn,openPanel,closePanel,notice:notify,onRoomChange:switchRoom,onInteraction:e=>socialPlay?.onInteraction(e),onState:(data,occupants)=>{socialPlay?.apply(data);if(data.disconnected){cinemaPlayer?.clear();classroomPlayer?.clear();journalEditing=false;clearInterval(journalRenewTimer);renderJournal();}else{cinemaPlayer?.apply(data);if(currentRoom==='classroom')classroomPlayer?.apply(data.presentation);}world?.setOccupants?.(occupants);if(data.journal)updateJournal(data.journal);if(data.cinemaDoor){cinemaDoorOpen=!!data.cinemaDoor.open;for(const w of roomWorlds.values())w.setCinemaDoor?.(cinemaDoorOpen);}if(data.classroomDoor){classroomDoorOpen=!!data.classroomDoor.open;for(const w of roomWorlds.values())w.setClassroomDoor?.(classroomDoorOpen);}}});socialPlay=attachSocialPlay({getSocial:()=>social,notice:notify,openPanel,onCameraShake:shakeCamera});refreshKeyHints();cinemaPlayer=createCinemaPlayer({openPanel,closePanel,releaseLook,getSelf:()=>social.getSelf(),send:(route,body)=>social.send(route,body),notice:notify,setVideo:video=>roomWorlds.get('cinema')?.setVideo?.(video)});classroomPlayer=createClassroomPlayer({THREE,getSocial:()=>social,getWorld:id=>roomWorlds.get(id),openPanel,closePanel,notice:notify});schedule();
