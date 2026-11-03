@@ -1,4 +1,4 @@
-const root=new URL('.',import.meta.url),version='2026-10-21.1';
+const root=new URL('.',import.meta.url),version='2026-11-03.1';
 let knowledgePromise;
 const normal=s=>s.normalize('NFKC').toLowerCase().replace(/[\s\p{P}]/gu,'');
 async function knowledge(){return knowledgePromise??=fetch(new URL('guide-knowledge.json?v='+version,root)).then(r=>{if(!r.ok)throw Error('知识资料暂时无法加载');return r.json();}).catch(e=>{knowledgePromise=null;throw e;});}
@@ -25,19 +25,45 @@ function boot(){
  const host=node('aside',undefined,'guide-widget');host.id='boyi-guide-widget';host.setAttribute('aria-label','博医云伴');
  const launcher=node('button',undefined,'guide-launcher');launcher.type='button';launcher.setAttribute('aria-label','打开博医云伴');launcher.setAttribute('aria-expanded','false');launcher.setAttribute('aria-controls','boyi-guide-panel');
  const icon=node('img');icon.src=new URL('media/brand/boyi-cloud-companion.png',root);icon.alt='';icon.width=44;icon.height=52;launcher.append(icon,node('span','博医云伴'));
+ const restore=document.querySelector('#restore-boyi-guide');
+ const launchRow=node('div',undefined,'guide-launch-row');launchRow.append(launcher);
+ const hide=node('button','×','guide-hide');hide.type='button';hide.setAttribute('aria-label','隐藏博医云伴');hide.title='隐藏博医云伴';
+ if(restore)launchRow.append(hide);
  const panel=node('section',undefined,'guide-panel');panel.id='boyi-guide-panel';panel.hidden=true;panel.setAttribute('aria-label','与博医云伴对话');
  const head=node('header'),art=node('div',undefined,'guide-art'),canvas=node('canvas');canvas.setAttribute('aria-hidden','true');const fallback=icon.cloneNode();art.append(canvas,fallback);
  const heading=node('div');heading.append(node('h2','博医云伴'),node('p','想了解什么，尽管问我'));
  const close=node('button','收起','guide-close');close.type='button';close.setAttribute('aria-label','收起博医云伴');head.append(art,heading,close);
+ const hideFromPanel=node('button','隐藏','guide-close guide-panel-hide');hideFromPanel.type='button';hideFromPanel.setAttribute('aria-label','隐藏博医云伴');if(restore)head.append(hideFromPanel);
  const output=node('div',undefined,'guide-output');output.setAttribute('role','log');output.setAttribute('aria-live','polite');output.setAttribute('aria-relevant','additions');
  const welcome=node('p','你好，我是博医云伴。可以问我博医计划、活动，或网站怎么用。','guide-message guide-assistant');output.append(welcome);
  const prompts=node('div',undefined,'guide-prompts');for(const text of ['博医计划是什么','怎么进入博医小屋']){const b=node('button',text);b.type='button';b.addEventListener('click',()=>{input.value=text;input.focus();});prompts.append(b);}
  const form=node('form'),label=node('label','你的问题'),input=node('textarea');input.id='boyi-guide-question';label.htmlFor=input.id;input.rows=2;input.maxLength=800;input.required=true;input.placeholder='从一个想了解的问题开始';
  const controls=node('div',undefined,'guide-form-controls'),send=node('button','发送'),cancel=node('button','取消');send.type='submit';cancel.type='button';cancel.hidden=true;controls.append(cancel,send);form.append(label,input,controls);
- const status=node('p','','guide-status');status.setAttribute('role','status');panel.append(head,output,prompts,form,status);host.append(launcher,panel);document.body.append(host);
+ const status=node('p','','guide-status');status.setAttribute('role','status');panel.append(head,output,prompts,form,status);host.append(launchRow,panel);document.body.append(host);
  let model,modelPending,controller,keepAnswer;
  async function gesture(action,busy=false){try{if(!model&&!modelPending){modelPending=import(new URL('portal-companion-3d.js?v=64a8514ffed1',root)).then(api=>{model=api.createBoyiModel(canvas,{onError:()=>{canvas.hidden=true;fallback.hidden=false;}});if(model.getStats().ready){fallback.hidden=true;canvas.hidden=false;}return model;});}const m=model||await modelPending;m?.setPaused(panel.hidden||document.hidden);m?.play(action,{busy,reduced:matchMedia('(prefers-reduced-motion:reduce)').matches});}catch{canvas.hidden=true;fallback.hidden=false;}}
- function show(open){panel.hidden=!open;launcher.hidden=open;launcher.setAttribute('aria-expanded',String(open));model?.setPaused(!open||document.hidden);if(open){document.exitPointerLock?.();gesture(controller?'think':'wave',!!controller);input.focus({preventScroll:true});}else launcher.focus({preventScroll:true});}
+ function show(open,{focus=true}={}){panel.hidden=!open;launchRow.hidden=open;launcher.setAttribute('aria-expanded',String(open));model?.setPaused(!open||document.hidden);if(open){document.exitPointerLock?.();gesture(controller?'think':'wave',!!controller);input.focus({preventScroll:true});}else if(focus)launcher.focus({preventScroll:true});}
+ const visibilityKey='boyi-cottage-guide-hidden';
+ function saveHidden(hidden){try{localStorage.setItem(visibilityKey,hidden?'1':'0');}catch{}}
+ function hideGuide(){
+  if(host.hidden||host.classList.contains('guide-departing'))return;
+  show(false,{focus:false});controller?.abort();saveHidden(true);
+  const finish=()=>{host.hidden=true;host.classList.remove('guide-departing');departure.hidden=true;departure.onanimationend=departure.onanimationcancel=null;};
+  if(reducedMotion.matches){finish();return;}
+  departure.hidden=false;host.classList.add('guide-departing');
+  // The portrait is purely decorative while it drops into the closing rift.
+  departure.onanimationend=departure.onanimationcancel=event=>{if(event.target===departure)finish();};
+ }
+ const departure=node('div',undefined,'guide-departure');departure.hidden=true;departure.setAttribute('aria-hidden','true');
+ departure.append(node('span',undefined,'guide-rift'),icon.cloneNode());host.append(departure);
+ const reducedMotion=matchMedia('(prefers-reduced-motion:reduce)');
+ if(restore){
+  try{host.hidden=localStorage.getItem(visibilityKey)==='1';}catch{}
+  hide.onclick=hideFromPanel.onclick=()=>{hideGuide();document.querySelector('#open-settings')?.focus({preventScroll:true});};
+  restore.onclick=()=>{departure.onanimationend=departure.onanimationcancel=null;departure.hidden=true;host.classList.remove('guide-departing');saveHidden(false);host.hidden=false;restore.textContent='博医云伴已显示';};
+  hide.addEventListener('click',()=>restore.textContent='召回博医云伴');
+  hideFromPanel.addEventListener('click',()=>restore.textContent='召回博医云伴');
+ }
  launcher.addEventListener('click',()=>show(true));close.addEventListener('click',()=>show(false));cancel.addEventListener('click',()=>controller?.abort());
  panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();show(false);}});document.addEventListener('visibilitychange',()=>model?.setPaused(panel.hidden||document.hidden));addEventListener('pagehide',event=>{controller?.abort();model?.setPaused(true);if(!event.persisted){model?.dispose();model=null;modelPending=null;}});addEventListener('pageshow',()=>model?.setPaused(panel.hidden||document.hidden));
  form.addEventListener('submit',async e=>{
