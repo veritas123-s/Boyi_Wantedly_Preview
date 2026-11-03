@@ -83,7 +83,8 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   }
   B(plaster, 0, 5.6, 0, 12, .2, 14);
   for (let z = -6; z <= 6; z += 2) B(wood, 0, 5.3, z, 11.6, .24, .16);
-  for (let x = -5; x <= 5; x += 2) B(wood, x, 5.3, 0, .16, .24, 13.6);
+  // Stagger the two beam runs so their undersides do not flicker at crossings.
+  for (let x = -5; x <= 5; x += 2) B(wood, x, 5.312, 0, .16, .24, 13.6);
   for (let x = -4; x <= 4; x += 2) for (let z = -5; z <= 5; z += 2) {
     B(walnut, x, 5.47, z, 1.82, .08, 1.82); B(glow, x, 5.415, z - .76, 1.45, .015, .025);
   }
@@ -122,30 +123,74 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
   const cushion = rounded(1.23, .24, 1.06, .085), back = rounded(1.24, .88, .25, .1);
   const arm = G(new THREE.LatheGeometry([[0, .2], [.13, .22], [.17, .35], [.16, .66], [.12, .82], [0, .86]].map(p => new THREE.Vector2(...p)), 16));
   const seats = ROOM_LAYOUT.cinema.seats;
+  const riser = .24, rearFloor = 4 * riser;
+  function tierBox(id, x, z, width, depth, height) {
+    B(walnut, x, height / 2, z, width, height, depth);
+    B(copper, x, height, z + depth / 2 - .018, width, .012, .035);
+    colliders.push({id,minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2,minY:0,maxY:height,walkableStep:true});
+  }
+  tierBox('cinema-rear-platform',0,2.95,6.1,1.9,rearFloor);
+  for (const side of [-1,1]) for (let step=0;step<4;step++) {
+    tierBox('cinema-stair-'+side+'-'+step,side*3.65,3.9-(step+.5)*.475,1.2,.475,(step+1)*riser);
+  }
   for (const row of [seats.slice(0, 4), seats.slice(4, 8)]) {
-    const z = row[0].z; B(walnut, 0, .19, z, 5.5, .22, 1.25); B(copper, 0, .285, z - .63, 5.35, .025, .015);
-    for (const x of [-2.45, 2.45]) for (const dz of [-.47, .47]) B(wood, x, .065, z + dz, .13, .13, .13);
+    const z = row[0].z, floor = row[0]===seats[4]?rearFloor:0; B(walnut, 0, floor+.19, z, 5.5, .22, 1.25); B(copper, 0, floor+.285, z - .63, 5.35, .025, .015);
+    for (const x of [-2.45, 2.45]) for (const dz of [-.47, .47]) B(wood, x, floor+.065, z + dz, .13, .13, .13);
     for (const seat of row) {
-      batch(cushion, velvet, [seat.x, seat.height - .12, z - .045]);
-      batch(back, velvet, [seat.x, .9, z + .47]);for(const dx of [-.59,.59])B(copper,seat.x+dx,seat.height-.025,z-.045,.012,.015,.94);B(copper,seat.x,seat.height-.025,z-.51,1.16,.015,.012);
+      batch(cushion, velvet, [seat.x, floor + seat.height - .12, z - .045]);
+      batch(back, velvet, [seat.x, floor+.9, z + .47]);for(const dx of [-.59,.59])B(copper,seat.x+dx,floor+seat.height-.025,z-.045,.012,.015,.94);B(copper,seat.x,floor+seat.height-.025,z-.51,1.16,.015,.012);
       for (const dx of [-.29, .29]) {
-        for (const dz of [-.27, .21]) batch(sphere, copper, [seat.x + dx, seat.height, z + dz], [.018, .007, .018]);
-        for (const y of [.72, 1.07]) batch(sphere, copper, [seat.x + dx, y, z + .337], [.018, .018, .012]);
+        for (const dz of [-.27, .21]) batch(sphere, copper, [seat.x + dx, floor+seat.height, z + dz], [.018, .007, .018]);
+        for (const y of [.72, 1.07]) batch(sphere, copper, [seat.x + dx, floor+y, z + .337], [.018, .018, .012]);
       }
     }
     for (const side of [-1, 1]) {
-      batch(arm, velvet, [side * 2.58, 0, z], [1, 1, 3.3]);
-      batch(ring, copper, [side * 2.58, .7, z - .48], [.09, .09, .09]);
+      const x = side * 2.58;
+      batch(arm, velvet, [x, floor, z], [1, 1, 3.3]);
+      colliders.push({id:'cinema-sofa-arm-'+z+'-'+side,minX:x-.17,maxX:x+.17,minZ:z-.561,maxZ:z+.561,minY:floor+.2,maxY:floor+.86});
+      batch(ring, copper, [side * 2.58, floor+.7, z - .48], [.09, .09, .09]);
     }
-    colliders.push({id:'cinema-sofa-seat-'+z,minX:-2.75,maxX:2.75,minZ:z-.625,maxZ:z+.32,minY:0,maxY:.52});colliders.push({id:'cinema-sofa-back-'+z,minX:-2.75,maxX:2.75,minZ:z+.32,maxZ:z+.625,minY:0,maxY:1.34});
+    colliders.push({id:'cinema-sofa-seat-'+z,minX:-2.75,maxX:2.75,minZ:z-.625,maxZ:z+.32,minY:floor,maxY:floor+.52});colliders.push({id:'cinema-sofa-back-'+z,minX:-2.75,maxX:2.75,minZ:z+.32,maxZ:z+.625,minY:floor,maxY:floor+1.34});
   }
+  colliders.push({id:'cinema-screen-frame',minX:-4.24,maxX:4.24,minZ:-6.28,maxZ:-6.05,minY:.11,maxY:5.09});
   B(copper, 0, 2.6, -6.25, 8.48, 4.98, .06); B(walnut, 0, 2.6, -6.15, 8.32, 4.82, .12);
   for (const side of [-1, 1]) for (let i = 0; i < 6; i++)
     batch(cylinder, velvet, [side * (4.45 + i * .2), 2.7, -6], [.105, 4.9, .16]);
   B(velvet, 0, 5.13, -6, 11.2, .18, .32);
-  const ready = lettering(['博医放映室', '靠近银幕按 E，打开完整银幕', 'MP4 / WebM · B站视频'], 1024, 576);
+  const ready = lettering(['博医放映室', '靠近银幕按 E，打开放映控制', 'MP4 / WebM · B站视频'], 1024, 576);
   const screenMaterial = basic({ map: ready, toneMapped: false });
   const screen = mesh(plane, screenMaterial, [0, 2.6, -6.05], [8, 4.5, 1]);
+  const windowMaterial = basic({
+    transparent: true, depthWrite: false, toneMapped: false,
+    blending: THREE.CustomBlending, blendSrc: THREE.ZeroFactor, blendDst: THREE.ZeroFactor
+  });
+  const projection = new THREE.Matrix4();
+  const mediaToScreen = new THREE.Matrix4().set(
+    1 / 960, 0, 0, -.5,
+    0, -1 / 540, 0, .5,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  );
+  function projectWebMedia(camera, width, height, enabled) {
+    screen.material = enabled ? windowMaterial : screenMaterial;
+    if (!enabled) return null;
+    projection.copy(camera.projectionMatrix).multiply(camera.matrixWorldInverse)
+      .multiply(screen.matrixWorld).multiply(mediaToScreen);
+    const m = projection.elements;
+    if (Math.min(m[15], m[15]+960*m[3], m[15]+540*m[7], m[15]+960*m[3]+540*m[7]) <= camera.near) {
+      screen.material = screenMaterial;
+      return null;
+    }
+    // Project the DOM rectangle through the same camera as the depth-tested screen.
+    for (let i=0;i<16;i+=4) {
+      m[i]=(m[i]+m[i+3])*width/2;
+      m[i+1]=(m[i+3]-m[i+1])*height/2;
+      m[i+2]=0;
+    }
+    m[10]=1;
+    return `matrix3d(${m.join(',')})`;
+  }
+  screen.renderOrder = 10;
   screen.name = 'Cinema screen'; screen.userData.interactionId = 'cinema';
   interactables.push({ id: 'cinema', label: '打开银幕 / 放映控制', object: screen, point: new THREE.Vector3(0, 2.6, -6.05) });
   // Door geometry and its moving collider live once in the cottage scene.
@@ -186,7 +231,7 @@ export function createCinemaScene(THREE, scene, { textures = {}, quality = 'bala
     screenMaterial.map = replacement || ready; screenMaterial.needsUpdate = true;
     previous?.dispose(); stats.videoAttached = next !== null; beam.visible = false;
   }
-  return {root,origin:ROOM_ORIGINS.cinema,bounds:ROOM_BOUNDS.cinema,connection:ROOM_CONNECTIONS.cinema,connections:ROOM_PORTALS.cinema,colliders,interactables,setCompanionActive(active){fairy.setActive(active);root.traverse(o=>{if(o.isHemisphereLight||o.isAmbientLight||o.isDirectionalLight)o.visible=Boolean(active);});},spawn: { x: 4.5, z: 4.8, yaw: 0 }, stats, setVideo, setCinemaDoor, getPortal,
+  return {root,origin:ROOM_ORIGINS.cinema,bounds:ROOM_BOUNDS.cinema,connection:ROOM_CONNECTIONS.cinema,connections:ROOM_PORTALS.cinema,colliders,interactables,setCompanionActive(active){fairy.setActive(active);root.traverse(o=>{if(o.isHemisphereLight||o.isAmbientLight||o.isDirectionalLight)o.visible=Boolean(active);});},spawn: { x: 4.5, z: 4.8, yaw: 0 }, stats, setVideo, seatElevation:seatId=>seats.slice(4).some(seat=>seat.id===seatId)?rearFloor:0, projectWebMedia, setCinemaDoor, getPortal,
     setViewerPose(pose = {}) {
       if (disposed || ![pose.x, pose.y, pose.z, pose.yaw].every(Number.isFinite)) return;
       fairy.setViewerPose(pose);

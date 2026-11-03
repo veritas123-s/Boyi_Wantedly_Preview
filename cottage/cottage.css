@@ -12,29 +12,12 @@
 @keyframes direct-loading{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.cottage-direct-entry #load-status:before{animation:none}}
 
-.social-tools{position:absolute;right:clamp(18px,4vw,64px);top:90px;display:flex;gap:8px;max-width:calc(100vw - 36px);flex-wrap:wrap;justify-content:flex-end}.social-tools button,.action-tools button{padding:11px 16px;border:1px solid #d3b98577;border-radius:24px;background:#142022c9;color:#f5ebd9;backdrop-filter:blur(12px);font-size:13px;min-height:42px}.action-tools{position:absolute;right:clamp(18px,4vw,64px);bottom:100px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}.voice-actions,.movie-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}.voice-actions .primary,.movie-actions .primary{margin:0}#movie-url{display:block;width:100%;padding:13px;background:#fffaf0;border:1px solid #cfc4b1;color:#292a25;margin-top:12px;font:14px inherit}#movie-seek{display:block;width:100%;margin:18px 0;accent-color:#8c2033}#room-messages{height:230px;overflow:auto;overscroll-behavior:contain;border-block:1px solid #d6cbb7;padding:12px 0}#room-messages p{margin:8px 0;overflow-wrap:anywhere}#room-messages strong{font-size:12px;color:#8c2033}#room-messages span{white-space:pre-wrap}#flat-screen{position:absolute;z-index:4;left:50%;top:18%;transform:translateX(-50%);width:min(820px,88vw);background:#0d1115;box-shadow:0 14px 70px #000a;border:1px solid #ac8a52;border-radius:8px;overflow:hidden}#flat-screen video{display:block;width:100%;max-height:62vh;aspect-ratio:16/9;background:#000}#flat-close{display:block;padding:9px 16px;text-align:right;width:100%;font-size:12px}#flat-screen.minimized{top:90px;bottom:auto;left:20px;transform:none;width:230px}#flat-screen.minimized video{height:128px}.social-tools button:focus-visible,.action-tools button:focus-visible{outline:3px solid #e3c995;outline-offset:3px}
-@media(max-width:600px){.social-tools{top:78px;right:16px;gap:6px}.social-tools button{padding:9px 12px;font-size:11px}.action-tools{right:18px;bottom:190px;gap:6px}.action-tools button{padding:9px 12px;font-size:11px;min-height:40px}#flat-screen{top:22%;width:92vw}#flat-screen.minimized{top:136px;left:12px;width:160px;bottom:auto}#flat-screen.minimized video{height:90px}}
+.social-tools{position:absolute;right:clamp(18px,4vw,64px);top:90px;display:flex;gap:8px;max-width:calc(100vw - 36px);flex-wrap:wrap;justify-content:flex-end}.social-tools button,.action-tools button{padding:11px 16px;border:1px solid #d3b98577;border-radius:24px;background:#142022c9;color:#f5ebd9;backdrop-filter:blur(12px);font-size:13px;min-height:42px}.action-tools{position:absolute;right:clamp(18px,4vw,64px);bottom:100px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}.voice-actions,.movie-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}.voice-actions .primary,.movie-actions .primary{margin:0}#movie-url{display:block;width:100%;padding:13px;background:#fffaf0;border:1px solid #cfc4b1;color:#292a25;margin-top:12px;font:14px inherit}#movie-seek{display:block;width:100%;margin:18px 0;accent-color:#8c2033}#room-messages{height:230px;overflow:auto;overscroll-behavior:contain;border-block:1px solid #d6cbb7;padding:12px 0}#room-messages p{margin:8px 0;overflow-wrap:anywhere}#room-messages strong{font-size:12px;color:#8c2033}#room-messages span{white-space:pre-wrap}.social-tools button:focus-visible,.action-tools button:focus-visible{outline:3px solid #e3c995;outline-offset:3px}
+@media(max-width:600px){.social-tools{top:78px;right:16px;gap:6px}.social-tools button{padding:9px 12px;font-size:11px}.action-tools{right:18px;bottom:190px;gap:6px}.action-tools button{padding:9px 12px;font-size:11px;min-height:40px}}
 
 @media(max-width:600px){#room-notice{top:136px}}
 
 @media(max-height:600px){.action-tools{bottom:80px;right:20px;flex-direction:row;flex-wrap:wrap;max-width:65vw;justify-content:flex-end}.action-tools button{padding:9px 12px}.social-tools{top:70px}#joystick{bottom:74px;left:20px;width:76px;height:76px}#mobile-interact{bottom:130px;right:20px}}
-
-@media(max-height:600px){#flat-screen.minimized{top:65px;bottom:auto;left:20px;width:160px}#flat-screen.minimized video{height:90px}}
-
-body:has(#flat-screen.minimized:not([hidden])) #room-notice{visibility:hidden;pointer-events:none}
-
-@media(max-height:350px){#flat-screen.minimized{top:60px;left:20px;width:120px}#flat-screen.minimized video{height:clamp(24px,calc(100dvh - 252px),68px)}#flat-screen.minimized #flat-close{padding:6px 10px;font-size:10px}}
-
-/* A shared video keeps its full frame and subtitles at every viewport size. */
-#movie-view-tools{display:none}
-#flat-screen.viewing{position:fixed;z-index:7;inset:0;top:0;left:0;bottom:0;width:100%;height:100dvh;max-width:none;transform:none;border:0;border-radius:0;box-shadow:none;background:#08090c;display:grid;grid-template-rows:auto minmax(0,1fr)}
-#flat-screen.viewing #movie-view-tools{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:max(9px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 9px max(12px,env(safe-area-inset-left));background:#11161d;border-bottom:1px solid #9e845344}
-#movie-view-tools button{padding:9px 13px;border:1px solid #c4ad7c88;border-radius:24px;background:#202a34;color:#f5ebd9;font-size:13px;min-height:40px}
-#flat-screen.viewing #flat-close{display:none}
-#flat-screen.viewing video{display:block;grid-row:2;width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;object-fit:contain;background:#000}
-body.cinema-viewing .room-header,body.cinema-viewing #room-hud{visibility:hidden;pointer-events:none}
-body.cinema-viewing #room-notice{display:none}
-@media(max-height:350px){#flat-screen.viewing #movie-view-tools{gap:6px;padding:5px 12px}#movie-view-tools button{padding:7px 11px;min-height:36px;font-size:12px}}
 
 #transit{position:absolute;inset:0;z-index:12;pointer-events:auto;background:#0c111526;color:#f0dfbb;transition:background .65s}#transit[data-phase=travelling]{background:#111719f8}.transit-floor{position:absolute;left:50%;top:17%;transform:translateX(-50%);display:flex;align-items:center;gap:28px;font:18px Georgia,serif;letter-spacing:.15em;text-shadow:0 1px 10px #000}.transit-floor strong{font-size:42px;font-weight:400}.transit-floor i{font-style:normal;color:#d3ad67}.transit-doors{position:absolute;inset:29% 28% 22%;border:1px solid #c8a66b55;overflow:hidden;opacity:0;transition:opacity .6s;perspective:700px}.transit-doors i{position:absolute;inset:0 50% 0 0;background:repeating-linear-gradient(90deg,#29302e,#29302e 23%,#b59a6a22 24%,#29302e 25%);border-right:1px solid #d5b77a66;box-shadow:inset 0 0 55px #0009;transform:translateX(-100%);transition:transform .65s}.transit-doors i+i{inset:0 0 0 50%;transform:translateX(100%)}#transit[data-phase=travelling] .transit-doors{opacity:1}#transit[data-phase=travelling] .transit-doors i{transform:translateX(0)}.transit-loading{position:absolute;bottom:max(45px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(420px,80vw);padding:20px 24px;background:#111719db;border:1px solid #d1ae7140;border-radius:5px}.transit-loading>div{display:flex;justify-content:space-between;gap:24px;font-size:16px;letter-spacing:.06em}.transit-loading strong{font-variant-numeric:tabular-nums;font-weight:400}.transit-loading progress{display:block;width:100%;height:3px;margin-top:16px;accent-color:#cfb077;border:0;background:#ffffff20}.transit-loading progress::-webkit-progress-bar{background:#ffffff20}.transit-loading progress::-webkit-progress-value{background:#cfb077;transition:width .2s}body:has(#transit:not([hidden])) #room-hud{visibility:hidden}body:has(#transit:not([hidden])) .room-header{visibility:hidden}@media(max-height:400px){.transit-floor{top:10%}.transit-floor strong{font-size:28px}.transit-doors{inset:25% 32% 28%}.transit-loading{bottom:16px;padding:12px 18px}.transit-loading>div{font-size:14px}}@media(prefers-reduced-motion:reduce){.transit-doors,.transit-doors i{transition-duration:.1s}}
 
@@ -85,18 +68,14 @@ body.cinema-viewing #room-notice{display:none}
  .classroom-reading #room-notice{bottom:116px}
 }
 
-/* The official cross-origin Bilibili player uses the cinema's full-screen DOM
-   surface. It is not read back or represented as a WebGL/WebGPU texture. */
-#cinema-bili-player{grid-row:2;min-height:0;width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;container-type:size}
-#cinema-bili-player iframe{display:block;flex:none;border:0;width:min(100cqw,177.777778cqh);height:min(100cqh,56.25cqw);aspect-ratio:16/9;background:#000}
-#flat-screen.viewing:has(#cinema-bili-player:not([hidden])){grid-template-rows:auto minmax(0,1fr) auto}
-#cinema-bili-note{grid-row:3;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;padding:8px 12px;background:#11161d;color:#dfd5c5;font-size:13px}
-#cinema-bili-note button,#cinema-bili-note a{padding:7px 12px;border:1px solid #8c744d;border-radius:6px;color:inherit;background:#20252c;text-decoration:none}
-@media(max-width:600px){#cinema-bili-note{font-size:12px;gap:6px;padding:6px}#cinema-bili-note span{width:100%;text-align:center}}
-
-#cinema-bili-identity{font-size:13px;color:#f4dfb2;letter-spacing:.02em;overflow-wrap:anywhere;max-width:100%}
-
 #classroom-projector-controls:not([hidden]){position:fixed;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));display:flex;align-items:center;gap:6px;padding:4px;border-radius:8px;background:#172524e8;color:#fff;pointer-events:auto;font-size:12px;font-variant-numeric:tabular-nums}
 #classroom-projector-controls button{min-height:36px;padding:5px 9px}
 #classroom-projector-controls button:disabled{opacity:.45}
 .look-locked #classroom-projector-controls{visibility:hidden}
+
+/* The canvas is above the media, with a depth-tested opening at the screen. */
+#cinema-web-screen{position:absolute;inset:0 auto auto 0;width:960px;height:540px;transform-origin:0 0;background:#000;overflow:hidden;pointer-events:none}
+#cinema-web-screen video,#cinema-bili-player,#cinema-bili-player iframe{display:block;width:100%;height:100%;border:0;background:#000;object-fit:contain}
+#room-view canvas{position:absolute;inset:0}
+.cinema-screen-input #room-view canvas{pointer-events:none}
+.cinema-screen-input #cinema-web-screen{pointer-events:auto}
