@@ -14,7 +14,7 @@ const getLocal=(key,fallback='')=>{try{return localStorage.getItem(key)||fallbac
 const setLocal=(key,value)=>{try{localStorage.setItem(key,value);return true;}catch{return false;}};
 let quality=getLocal('boyi-cottage-quality',coarse?'smooth':'balanced');if(!allowedQuality.includes(quality))quality='balanced';$('#quality').value=quality;
 let THREE,renderer,scene,camera,world,raycaster,socialRoot,running=false,initializing=false,frameId=0,lastFrame=0,nextRender=0,elapsed=0,yaw=0,pitch=0,hover=null,lastFocus=null;
-let dragging=null,joy=null,joystick={x:0,z:0},fire=true,night=true,renderFailures=0,social,currentRoom='lobby',switching=null;
+let pointerLockedAt=-Infinity,dragging=null,joy=null,joystick={x:0,z:0},fire=true,night=true,renderFailures=0,social,currentRoom='lobby',switching=null;
 let socialPlay=null,freeLookButton=null,freeLookToggle=false,freeYaw=0,freePitch=0,shakeUntil=0,shakeStarted=0,shakeDuration=0;
 let fairyHidden=getLocal('boyi-cottage-fairy-hidden')==='1';
 let presentingClassroom=false,readingClassroom=false,viewYaw=0,viewPitch=0;
@@ -38,7 +38,7 @@ function recordInterval(seconds){if(seconds<=0)return;if(intervalCount===frameIn
 function performanceStats(){const now=performance.now();if(intervalRevision!==percentileRevision&&now-lastPercentileRead>250){const sorted=Array.from(frameIntervals.subarray(0,intervalCount)).sort((a,b)=>a-b);intervalSummary={samples:intervalCount,p50Ms:(sorted[Math.floor((intervalCount-1)*.5)]||0)*1000,p95Ms:(sorted[Math.ceil((intervalCount-1)*.95)]||0)*1000,meanMs:intervalCount?intervalSum/intervalCount*1000:0,maxMs:(sorted[intervalCount-1]||0)*1000};percentileRevision=intervalRevision;lastPercentileRead=now;}const info=renderer?.info;return{...intervalSummary,windowCapacity:frameIntervals.length,renderCpuMs:lastRenderMs,drawCalls:info?.render.drawCalls||0,triangles:info?.render.triangles||0,resources:{geometries:info?.memory.geometries||0,textures:info?.memory.textures||0,residentRooms:roomWorlds.size},pixelRatio:renderer?.getPixelRatio()||0,drawingBuffer:{width:renderer?.domElement.width||0,height:renderer?.domElement.height||0},antialias:quality!=='smooth'&&quality!=='ultra',shadows:!!renderer?.shadowMap.enabled,hidden:document.hidden,renderPaused:document.hidden||!running,intervalMeaning:'Rendered frame intervals in this browser, not GPU timing'};}
 let player,ownAvatar=null,ownSignature='',viewMode=1,cameraRay,cameraClipBox,cameraHit,cameraTarget,cameraDesired,cameraDirection;
 const viewNames=['','第一人称','第二人称','第三人称'];
-const physics={step:1/120,accumulator:0,seconds:0,steps:0,vx:0,vy:0,vz:0,grounded:true,groundHeight:0,jumps:0,landings:0,maxAirSpeed:0,maxHeight:0,distance:0,collisions:0,droppedSeconds:0,touchJump:false,jumpUntil:0,lastJumpSignal:0};
+const physics={step:1/120,accumulator:0,seconds:0,steps:0,vx:0,vy:0,vz:0,grounded:true,groundHeight:0,jumps:0,landings:0,maxAirSpeed:0,maxHeight:0,distance:0,collisions:0,droppedSeconds:0,touchJump:false,jumpUntil:0,coyoteUntil:0,lastJumpSignal:0};
 let bodyRadius=.31,bodyHeight=1.65;
 const jumpSpeed=6.4,gravity=16;
 let seamlessTransfer=null,companionCameraFrom=null,companionCameraStarted=-Infinity;
@@ -109,7 +109,7 @@ function eyeY(){const pose=framePose||social?.getPose(),m=currentAvatarMetrics()
 function viewerPose(){Object.assign(poseScratch,{x:player.x,y:eyeY(),z:player.z,yaw,pitch,aspect:camera.aspect});return poseScratch;}
 function roomOrigin(w=world){return w?.origin||zeroOrigin;}
 function localPose(){const o=roomOrigin();return{x:player.x-o.x,y:eyeY()-(o.y||0),z:player.z-o.z,yaw,pitch,aspect:camera.aspect};}
-function resetPhysics(){physics.vx=physics.vy=physics.vz=physics.accumulator=0;physics.grounded=true;physics.groundHeight=player?.y||0;physics.touchJump=false;physics.jumpUntil=0;}
+function resetPhysics(){physics.vx=physics.vy=physics.vz=physics.accumulator=0;physics.grounded=true;physics.groundHeight=player?.y||0;physics.touchJump=false;physics.jumpUntil=0;physics.coyoteUntil=0;}
 function applySpawn(spawn){if(!player||!spawn)return;if(seamlessTransfer?.target===currentRoom){seamlessTransfer=null;return;}const o=roomOrigin(),feet=spawn.participantId&&Number.isFinite(spawn.y)?spawn.y:(spawn.feetY||0);player.set(spawn.x+o.x,Math.max(feet,cinemaExitElevation(spawn))+(o.y||0),spawn.z+o.z);yaw=Number.isFinite(spawn.yaw)?spawn.yaw:0;pitch=0;clearInput();resetPhysics();world?.setViewerPose?.(localPose());world?.update(elapsed,0);updateCamera();}
 function clipCamera(target,desired){
  desired.x=THREE.MathUtils.clamp(desired.x,cameraBounds.minX+.12,cameraBounds.maxX-.12);
@@ -141,10 +141,57 @@ function syncClassroomPresentation(){
  if(reading!==readingClassroom){readingClassroom=reading;document.body.classList.toggle('classroom-reading',reading);}
 }
 const fairyToggle=$('#toggle-scene-fairy');
+let fairyDeparture=null;
+function endFairyDeparture(){
+ if(!fairyDeparture)return;
+ const {rift,fairy,scale}=fairyDeparture;
+ fairy.scale.copy(scale);
+ rift.removeFromParent();
+ rift.traverse(mesh=>{mesh.geometry?.dispose();mesh.material?.dispose();});
+ fairyDeparture=null;
+}
+function startFairyDeparture(){
+ const fairy=world?.appFairy;
+ if(reduced||!fairy?.visible||!camera||cinemaPlayer?.isInteracting())return;
+ const rift=new THREE.Group();
+ rift.name='Boyi dimensional rift';
+ const outline=[[0,.39],[-.07,.23],[-.035,.10],[-.14,-.02],[-.055,-.18],[-.085,-.27],[0,-.39],[.095,-.23],[.054,-.12],[.145,.025],[.065,.16],[.08,.27]];
+ for(const [size,color,depth] of [[1.3,0x6746cd,0],[1,0x9ee5ff,.002],[.77,0x130b30,.004]]){
+  const shape=new THREE.Shape(outline.map(([x,y])=>new THREE.Vector2(x*size,y*size)));
+  const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide}));
+  mesh.position.z=depth;
+  mesh.layers.set(roomLayers[currentRoom]);
+  rift.add(mesh);
+ }
+ const start=fairy.position.clone(),scale=fairy.scale.clone();
+ const offset=new THREE.Vector3(.43,.09,0).applyQuaternion(camera.quaternion);
+ const destination=start.clone().add(offset);
+ rift.position.copy(destination);
+ rift.quaternion.copy(camera.quaternion);
+ rift.scale.set(.01,.2,1);
+ fairy.parent.add(rift);
+ fairyDeparture={fairy,rift,start,scale,destination,started:performance.now()};
+}
+function updateFairyDeparture(){
+ if(!fairyDeparture)return;
+ const {fairy,rift,start,scale,destination,started}=fairyDeparture;
+ const progress=(performance.now()-started)/760;
+ if(progress>=1||world?.appFairy!==fairy||viewMode===2||presentingClassroom||cinemaPlayer?.isInteracting()){
+  endFairyDeparture();
+  return;
+ }
+ const dive=THREE.MathUtils.smoothstep(progress,.14,.72);
+ fairy.position.lerpVectors(start,destination,dive);
+ fairy.scale.copy(scale).multiplyScalar(1-.99*dive);
+ const opening=THREE.MathUtils.smoothstep(progress,0,.24)*(1-THREE.MathUtils.smoothstep(progress,.72,1));
+ rift.scale.set(Math.max(.01,opening),Math.max(.01,opening),1);
+}
 function syncFairyToggle(){
  fairyToggle.setAttribute('aria-pressed',String(fairyHidden));
 }
 function toggleSceneFairy(){
+ endFairyDeparture();
+ if(!fairyHidden)startFairyDeparture();
  fairyHidden=!fairyHidden;
  setLocal('boyi-cottage-fairy-hidden',fairyHidden?'1':'0');
  syncFairyToggle();
@@ -154,7 +201,8 @@ fairyToggle.onclick=toggleSceneFairy;
 syncFairyToggle();
 function updateCamera(dt=Infinity){
  if(!camera||!player||!world)return;syncClassroomPresentation();
- for(const w of renderedWorlds)if(w.appFairy)w.appFairy.visible=!fairyHidden&&w===world&&viewMode!==2&&!presentingClassroom;
+ updateFairyDeparture();
+ for(const w of renderedWorlds)if(w.appFairy)w.appFairy.visible=(!fairyHidden||fairyDeparture?.fairy===w.appFairy)&&w===world&&viewMode!==2&&!presentingClassroom;
  if(currentRoom==='cinema'&&cinemaPlayer?.isInteracting()){
   const screen=world.root.getObjectByName('Cinema screen');
   screen.getWorldPosition(cameraTarget);
@@ -168,7 +216,7 @@ function updateCamera(dt=Infinity){
  if(camera.zoom!==1){camera.zoom=1;camera.updateProjectionMatrix();}
 
  const yawTarget=yaw+freeYaw,pitchTarget=THREE.MathUtils.clamp(pitch+freePitch,-1.3,1.3);
- const blend=1-Math.exp(-dt/.025);
+ const blend=1-Math.exp(-dt/.055);
  const delta=Math.atan2(Math.sin(yawTarget-viewYaw),Math.cos(yawTarget-viewYaw));
  viewYaw+=delta*blend;viewPitch+=(pitchTarget-viewPitch)*blend;
  const lookYaw=viewYaw,lookPitch=viewPitch,fairy=world.appFairy,small=social?.getSelf()?.avatarId==='naidan',m=currentAvatarMetrics(),pose=framePose||social?.getPose(),seat=pose?.seatId?(pose.seatHeight||.55):0,centre=small?seat+m.height*.6:1.06;
@@ -187,6 +235,7 @@ function updateCamera(dt=Infinity){
 function updateOwnAvatar(t,moving){const identity=social?.getSelf(),avatarId=identity?.avatarId||'visitor',variant=identity?.variant||0,signature=avatarId+':'+variant;if(signature!==ownSignature){ownAvatar?.dispose();ownAvatar=createAvatar(THREE,{avatarId,variant,name:'我',quality});ownAvatar.root.name='Own Boyi avatar';ownAvatar.root.children[1].visible=false;scene.add(ownAvatar.root);ownSignature=signature;}const pose=framePose||social?.getPose()||{};ownAvatar.root.position.set(player.x,player.y+seatElevation(pose),player.z);ownAvatar.root.rotation.y=(pose.seatId?pose.yaw:yaw)+Math.PI;ownAvatar.root.visible=viewMode!==1;ownAvatar.update(t,camera,moving,pose);hands?.update(pose.heldKind,t,viewMode===1,pose);setHidden(actionHud.stand,!pose.seatId);setHidden(actionHud.sit,!!pose.seatId);setHidden(actionHud.drop,!pose.heldItemId);setHidden(actionHud.pickup,!!pose.heldItemId);}
 function roomBounds(w=world){const o=roomOrigin(w),b=w?.bounds||defaultBounds;return{minX:b.minX+o.x,maxX:b.maxX+o.x,minZ:b.minZ+o.z,maxZ:b.maxZ+o.z};}
 function refreshWorldCache(){
+ endFairyDeparture();
  currentInteractables.length=0;for(const item of world?.interactables||[]){currentInteractables.push(item);interactionOwners.set(item,world);}
  const doorId=currentRoom==='cinema'?'cinema-door-toggle':currentRoom==='classroom'?'classroom-door-toggle':null;
  if(doorId){const cottage=roomWorlds.get('cottage'),sharedDoor=cottage?.interactables.find(i=>i.id===doorId);if(sharedDoor){currentInteractables.push(sharedDoor);interactionOwners.set(sharedDoor,cottage);}}
@@ -203,8 +252,8 @@ function collisionBoxes(){let count=0;for(const w of renderedWorlds){const o=roo
 function overlapsXZ(c,x=player.x,z=player.z){return x+bodyRadius>c.minX+.00001&&x-bodyRadius<c.maxX-.00001&&z+bodyRadius>c.minZ+.00001&&z-bodyRadius<c.maxZ-.00001;}
 function overlapsY(c,y=player.y){return y+bodyHeight>c.minY+.0001&&y<c.maxY-.0001;}
 function insideWorld(x,z){for(const b of worldRanges)if(x>=b.minX&&x<=b.maxX&&z>=b.minZ&&z<=b.maxZ)return true;return false;}
-function queueJump(){physics.jumpUntil=performance.now()+160;}
-function beginJump(){physics.vy=jumpSpeed;physics.grounded=false;physics.jumpUntil=0;physics.jumps++;const now=performance.now();if(now-physics.lastJumpSignal>1000){physics.lastJumpSignal=now;social?.action('jump');}}
+function queueJump(){physics.jumpUntil=performance.now()+260;}
+function beginJump(){physics.vy=jumpSpeed;physics.grounded=false;physics.jumpUntil=0;physics.coyoteUntil=0;physics.jumps++;const now=performance.now();if(now-physics.lastJumpSignal>1000){physics.lastJumpSignal=now;social?.action('jump');}}
 function accelerate(x,z,wishSpeed,acceleration,dt){const add=wishSpeed-(physics.vx*x+physics.vz*z);if(add<=0)return;const change=Math.min(add,acceleration*wishSpeed*dt);physics.vx+=x*change;physics.vz+=z*change;}
 function resolveOverlaps(boxes){
  if(boxes.some(c=>!c.portal&&overlapsXZ(c)&&overlapsY(c))){
@@ -253,11 +302,11 @@ function sweepHorizontal(axis,delta,boxes){if(!delta)return;const other=axis==='
  player[axis]=finish;if(Math.abs(finish-start-delta)>.00001){if(!contact?.portal)physics[axis==='x'?'vx':'vz']=0;physics.collisions++;statistics.blockedMoves=(statistics.blockedMoves||0)+1;}
 }
 function physicsStep(dt,allowInput){syncAvatarMetrics();let x=allowInput?(bindings.isHeld('right',keys)?1:0)-(bindings.isHeld('left',keys)?1:0)+joystick.x:0,z=allowInput?(bindings.isHeld('backward',keys)?1:0)-(bindings.isHeld('forward',keys)?1:0)+joystick.z:0;const length=Math.hypot(x,z);
- if(social?.getSelf()?.seatId){physics.vx=physics.vy=physics.vz=0;physics.grounded=true;if(length>.1&&!standPending){standPending=true;social.action('stand').finally(()=>standPending=false);}return;}
+ if(social?.getSelf()?.seatId){physics.vx=physics.vy=physics.vz=0;physics.grounded=true;const jump=allowInput&&(physics.touchJump||bindings.isHeld('jump',keys)||performance.now()<physics.jumpUntil);if((length>.1||jump)&&!standPending){physics.jumpUntil=0;standPending=true;social.action('stand').then(ok=>{if(ok&&jump&&canLook())queueJump();}).finally(()=>standPending=false);}return;}
  const boxes=frameColliders,floor=roomOrigin().y||0;resolveOverlaps(boxes);let support=floor;for(const c of boxes)if(Number.isFinite(c.maxY)&&overlapsXZ(c)&&c.maxY<=player.y+.025)support=Math.max(support,c.maxY);
- if(physics.grounded&&player.y>support+.035)physics.grounded=false;
+ if(physics.grounded&&player.y>support+.035){physics.grounded=false;physics.coyoteUntil=physics.seconds+.10;}
  const wantsJump=allowInput&&(physics.touchJump||bindings.isHeld('jump',keys)||performance.now()<physics.jumpUntil);
- if(physics.grounded&&wantsJump)beginJump();
+ if(wantsJump&&(physics.grounded||physics.seconds<physics.coyoteUntil))beginJump();
  if(length>1){x/=length;z/=length;}const magnitude=Math.min(1,length),limit=allowInput&&bindings.isHeld('run',keys)?3.6:2.3;
  if(physics.grounded){const speed=Math.hypot(physics.vx,physics.vz),control=magnitude>.001?speed:Math.max(speed,1.5),next=Math.max(0,speed-control*8*dt),ratio=speed?next/speed:0;physics.vx*=ratio;physics.vz*=ratio;}
  if(magnitude>.001){const wx=(Math.cos(yaw)*x+Math.sin(yaw)*z)/magnitude,wz=(-Math.sin(yaw)*x+Math.cos(yaw)*z)/magnitude;accelerate(wx,wz,limit*magnitude,physics.grounded?14:8,dt);}
@@ -266,7 +315,7 @@ function physicsStep(dt,allowInput){syncAvatarMetrics();let x=allowInput?(bindin
  for(let slice=0;slice<slices;slice++){const beforeX=player.x,beforeZ=player.z;sweepHorizontal('x',physics.vx*piece,boxes);sweepHorizontal('z',physics.vz*piece,boxes);physics.distance+=Math.hypot(player.x-beforeX,player.z-beforeZ);
   const previousY=player.y;if(!physics.grounded)physics.vy-=gravity*piece;let nextY=player.y+physics.vy*piece,landing=floor;
   for(const c of boxes){if(!overlapsXZ(c))continue;if(physics.vy<=0&&Number.isFinite(c.maxY)&&previousY>=c.maxY-.025&&nextY<=c.maxY)landing=Math.max(landing,c.maxY);if(physics.vy>0&&previousY+bodyHeight<=c.minY+.0001&&nextY+bodyHeight>c.minY){nextY=Math.min(nextY,c.minY-bodyHeight);physics.vy=0;physics.collisions++;}}
-  if(physics.vy<=0&&nextY<=landing){if(!physics.grounded)physics.landings++;player.y=landing;physics.vy=0;physics.grounded=true;physics.groundHeight=landing;if(wantsJump)beginJump();else{const speed=Math.hypot(physics.vx,physics.vz);if(speed>limit){physics.vx*=limit/speed;physics.vz*=limit/speed;}}}else{player.y=nextY;physics.grounded=false;}
+  if(physics.vy<=0&&nextY<=landing){if(!physics.grounded)physics.landings++;player.y=landing;physics.vy=0;physics.grounded=true;physics.groundHeight=landing;physics.coyoteUntil=0;if(wantsJump)beginJump();else{const speed=Math.hypot(physics.vx,physics.vz);if(speed>limit){physics.vx*=limit/speed;physics.vz*=limit/speed;}}}else{if(physics.grounded)physics.coyoteUntil=physics.seconds+.10;player.y=nextY;physics.grounded=false;}
  }
  physics.maxHeight=Math.max(physics.maxHeight,player.y);physics.steps++;physics.seconds+=dt;
 }
@@ -408,7 +457,10 @@ function performInput(code,repeat=false){
 function bindView(){const canvas=renderer.domElement;
  canvas.addEventListener('click',e=>{if(e.button===0&&!coarse&&canLook()&&(!dragging||!dragging.moved))requestLook();});
  canvas.addEventListener('pointerdown',e=>{if(!canLook()||document.pointerLockElement)return;if(e.pointerType==='mouse'&&e.button!==0)return;dragging={id:e.pointerId,x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false};canvas.setPointerCapture(e.pointerId);});
- canvas.addEventListener('pointermove',e=>{if(!canLook())return;let dx=0,dy=0;if(document.pointerLockElement===canvas){dx=e.movementX;dy=e.movementY;}else if(dragging?.id===e.pointerId){dx=e.clientX-dragging.x;dy=e.clientY-dragging.y;dragging.x=e.clientX;dragging.y=e.clientY;dragging.moved||=Math.hypot(e.clientX-dragging.startX,e.clientY-dragging.startY)>4;}else return;if(freeLooking()){freeYaw-=dx*.003;freeYaw=Math.atan2(Math.sin(freeYaw),Math.cos(freeYaw));freePitch=THREE.MathUtils.clamp(freePitch-dy*.003,-1.3-pitch,1.3-pitch);}else{yaw-=dx*.003;pitch=THREE.MathUtils.clamp(pitch-dy*.003,-1.3,1.3);}});
+ canvas.addEventListener('pointermove',e=>{if(!canLook())return;let dx=0,dy=0;if(document.pointerLockElement===canvas){dx=e.movementX;dy=e.movementY;
+  if(!Number.isFinite(dx)||!Number.isFinite(dy))return;
+  const limit=Math.max(120,Math.min(canvas.clientWidth,canvas.clientHeight)*.45),distance=Math.hypot(dx,dy);
+  if(distance>limit){if(performance.now()-pointerLockedAt<90)return;dx*=limit/distance;dy*=limit/distance;}}else if(dragging?.id===e.pointerId){dx=e.clientX-dragging.x;dy=e.clientY-dragging.y;dragging.x=e.clientX;dragging.y=e.clientY;dragging.moved||=Math.hypot(e.clientX-dragging.startX,e.clientY-dragging.startY)>4;}else return;if(freeLooking()){freeYaw-=dx*.003;freeYaw=Math.atan2(Math.sin(freeYaw),Math.cos(freeYaw));freePitch=THREE.MathUtils.clamp(freePitch-dy*.003,-1.3-pitch,1.3-pitch);}else{yaw-=dx*.003;pitch=THREE.MathUtils.clamp(pitch-dy*.003,-1.3,1.3);}});
  const end=e=>{if(dragging?.id===e.pointerId){const moved=dragging.moved;dragging=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(moved){const ended={moved:true};dragging=ended;setTimeout(()=>{if(dragging===ended)dragging=null;},0);}}};canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);canvas.addEventListener('lostpointercapture',e=>{if(dragging?.id===e.pointerId)dragging=null;});
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();failScene('画面已暂停，你仍可使用屋内去处。重新载入页面可以再次进入小屋');});
  freeLookButton=document.createElement('button');freeLookButton.id='free-look';freeLookButton.type='button';freeLookButton.addEventListener('click',()=>{if(!canLook())return;freeLookToggle=!freeLookToggle;syncFreeLookButton();});$('#room-hud .action-tools').append(freeLookButton);syncFreeLookButton();refreshKeyHints();
@@ -417,13 +469,13 @@ const stick=$('#joystick');stick.addEventListener('pointerdown',e=>{if(dialog.op
 function updateStick(e){if(joy?.id!==e.pointerId)return;const b=stick.getBoundingClientRect();let x=(e.clientX-b.left-b.width/2)/35,z=(e.clientY-b.top-b.height/2)/35;const l=Math.hypot(x,z);if(l>1){x/=l;z/=l;}joystick={x,z};stick.querySelector('span').style.transform=`translate(${x*30}px,${z*30}px)`;}
 stick.addEventListener('pointermove',updateStick);for(const type of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(type,()=>{joy=null;joystick={x:0,z:0};stick.querySelector('span').style.transform='';});
 addEventListener('keydown',e=>{if(e.code==='Escape'){releaseLook();return;}if(!running||transitActive||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey||e.target.closest?.('input,textarea,select,[contenteditable]')||(['Enter','Space'].includes(e.code)&&e.target.closest?.('button,a')))return;if(performInput(e.code,e.repeat))e.preventDefault();});
-addEventListener('keyup',e=>{keys.delete(e.code);blockedKeys.delete(e.code);syncFreeLookButton();});addEventListener('blur',()=>{clearInput();blockedKeys.clear();});document.addEventListener('pointerlockchange',()=>{const locked=!!document.pointerLockElement;if(!locked)clearInput();document.documentElement.classList.toggle('look-locked',locked);$('#resume-look').hidden=locked;});addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{clearInput();if(document.hidden){finishJournal();if(frameId)cancelAnimationFrame(frameId);frameId=0;}else schedule();});
-addEventListener('pagehide',()=>{finishJournal();running=false;if(frameId)cancelAnimationFrame(frameId);cinemaPlayer?.clear();classroomPlayer?.dispose();socialPlay?.dispose();socialPlay=null;social?.leave();for(const pending of preparedRooms.values())pending.then(w=>w.dispose()).catch(()=>{});preparedRooms.clear();roomWorlds.clear();roomRenderCameras.clear();hands?.dispose();ownAvatar?.dispose();renderer?.dispose();Object.values(textures).forEach(t=>t.dispose());},{once:true});
+addEventListener('keyup',e=>{keys.delete(e.code);blockedKeys.delete(e.code);syncFreeLookButton();});addEventListener('blur',()=>{clearInput();blockedKeys.clear();});document.addEventListener('pointerlockchange',()=>{const locked=!!document.pointerLockElement;pointerLockedAt=locked?performance.now():-Infinity;if(!locked)clearInput();document.documentElement.classList.toggle('look-locked',locked);$('#resume-look').hidden=locked;});addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{clearInput();if(document.hidden){finishJournal();if(frameId)cancelAnimationFrame(frameId);frameId=0;}else schedule();});
+addEventListener('pagehide',()=>{endFairyDeparture();finishJournal();running=false;if(frameId)cancelAnimationFrame(frameId);cinemaPlayer?.clear();classroomPlayer?.dispose();socialPlay?.dispose();socialPlay=null;social?.leave();for(const pending of preparedRooms.values())pending.then(w=>w.dispose()).catch(()=>{});preparedRooms.clear();roomWorlds.clear();roomRenderCameras.clear();hands?.dispose();ownAvatar?.dispose();renderer?.dispose();Object.values(textures).forEach(t=>t.dispose());},{once:true});
 addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
 function motionStats(){return{avatarMetrics:{...currentAvatarMetrics(),bodyHeight,bodyRadius,actualEyeHeight:player?eyeY()-player.y:null},velocity:{x:physics.vx,y:physics.vy,z:physics.vz},horizontalSpeed:Math.hypot(physics.vx,physics.vz),grounded:physics.grounded,groundHeight:physics.groundHeight,groundSpeedLimit:bindings.isHeld('run',keys)?3.6:2.3,airSpeedLimited:false,jumps:physics.jumps,landings:physics.landings,maxAirSpeed:physics.maxAirSpeed,maxHeight:physics.maxHeight,distance:physics.distance,steps:physics.steps,simulatedSeconds:physics.seconds,stepSeconds:physics.step,accumulator:physics.accumulator,droppedSeconds:physics.droppedSeconds,collisions:physics.collisions,portalPending,residentRooms:[...roomWorlds.keys()],residentResources:[...roomWorlds].map(([room,w])=>({room,rootId:w.root.uuid,visible:w.root.visible,kind:w.stats.sceneKind,videoAttached:!!w.stats.videoAttached,presentationAttached:!!w.stats.presentationAttached,seatCount:w.stats.seatCount||0,disposed:!!w.stats.disposed})),origin:{...roomOrigin()},bounds:world?roomBounds():null,connection:currentConnection?{...currentConnection,span:[...currentConnection.span]}:null,connections:currentConnections.map(c=>({...c,span:[...c.span],open:connectionOpen(c)})),colliders:world?collisionBoxes().map(c=>({...c,maxY:Number.isFinite(c.maxY)?c.maxY:null})):[],surfaces:world?collisionBoxes().filter(c=>Number.isFinite(c.maxY)).map(c=>({...c})):[]};}
 function interactionStats(){return currentInteractables.map(i=>{const o=i.space==='world'?zeroOrigin:roomOrigin(interactionOwners.get(i));return{id:i.id,label:i.label,seatId:i.seatId||null,itemId:i.itemId||null,point:i.point?{x:i.point.x+o.x,y:i.point.y+(o.y||0),z:i.point.z+o.z}:null};});}
 // Read-only diagnostics: true player coordinates and the independent render camera.
-window.boyiCottage={getStats:()=>({...statistics,roomLoads:statistics.roomLoads?Object.fromEntries(Object.entries(statistics.roomLoads).map(([id,timing])=>[id,{...timing}])):null,roomWarmups:statistics.roomWarmups?Object.fromEntries(Object.entries(statistics.roomWarmups).map(([id,timing])=>[id,{...timing}])):null,lastRoomSwitch:statistics.lastRoomSwitch?{...statistics.lastRoomSwitch}:null,movement:motionStats(),performance:performanceStats(),renderCache:{cameras:roomRenderCameras.size,warmedRooms:[...warmedRoomViews],preparing:preparingViews},fps:intervalSum?+(intervalCount/intervalSum).toFixed(1):0,position:player?{x:player.x,z:player.z}:null,player:player?{x:player.x,y:player.y,z:player.z,yaw}:null,camera:camera?{x:camera.position.x,y:camera.position.y,z:camera.position.z,rotation:{x:camera.rotation.x,y:camera.rotation.y,z:camera.rotation.z},quaternion:{x:camera.quaternion.x,y:camera.quaternion.y,z:camera.quaternion.z,w:camera.quaternion.w}}:null,freeLook:{active:!!freeLooking(),toggled:freeLookToggle,yawOffset:freeYaw,pitchOffset:freePitch,returning:!freeLooking()&&(Math.abs(freeYaw)>.0001||Math.abs(freePitch)>.0001)},cameraShake:{active:!reduced&&performance.now()<shakeUntil,remainingMs:Math.max(0,shakeUntil-performance.now()),durationMs:shakeDuration,reducedMotion:reduced},hands:hands?.getStats?.()||null,viewMode,companionCameraTransition:{active:viewMode===2&&performance.now()-companionCameraStarted<600,remainingMs:viewMode===2?Math.max(0,600-(performance.now()-companionCameraStarted)):0},ownAvatar:ownAvatar?{avatarId:ownSignature.split(':')[0],variant:Number(ownSignature.split(':')[1]),visible:ownAvatar.root.visible,x:ownAvatar.root.position.x,z:ownAvatar.root.position.z}:null,fairyVisible:world?.appFairy?.visible??null,classroomPresentation:{active:presentingClassroom,reading:readingClassroom,screenBounds:world?.stats.presentationBounds||null},yaw,pitch,dialog:dialog.open,fire,night,avatarModel:ownAvatar?.getModelStats?.()||null,room:currentRoom,transitActive,cinemaDoorOpen,classroomDoorOpen,loadPercent,keyBindings:bindings.snapshot(),pointerLocked:!!document.pointerLockElement,social:social?.getStats()||null,movie:cinemaPlayer?.getStats()||null,classroom:classroomPlayer?.getStats()||null,rig:ownAvatar?.getRigPose()||null,interactions:interactionStats()})};
+window.boyiCottage={getStats:()=>({...statistics,roomLoads:statistics.roomLoads?Object.fromEntries(Object.entries(statistics.roomLoads).map(([id,timing])=>[id,{...timing}])):null,roomWarmups:statistics.roomWarmups?Object.fromEntries(Object.entries(statistics.roomWarmups).map(([id,timing])=>[id,{...timing}])):null,lastRoomSwitch:statistics.lastRoomSwitch?{...statistics.lastRoomSwitch}:null,movement:motionStats(),performance:performanceStats(),renderCache:{cameras:roomRenderCameras.size,warmedRooms:[...warmedRoomViews],preparing:preparingViews},fps:intervalSum?+(intervalCount/intervalSum).toFixed(1):0,position:player?{x:player.x,z:player.z}:null,player:player?{x:player.x,y:player.y,z:player.z,yaw}:null,camera:camera?{x:camera.position.x,y:camera.position.y,z:camera.position.z,rotation:{x:camera.rotation.x,y:camera.rotation.y,z:camera.rotation.z},quaternion:{x:camera.quaternion.x,y:camera.quaternion.y,z:camera.quaternion.z,w:camera.quaternion.w}}:null,freeLook:{active:!!freeLooking(),toggled:freeLookToggle,yawOffset:freeYaw,pitchOffset:freePitch,returning:!freeLooking()&&(Math.abs(freeYaw)>.0001||Math.abs(freePitch)>.0001)},cameraShake:{active:!reduced&&performance.now()<shakeUntil,remainingMs:Math.max(0,shakeUntil-performance.now()),durationMs:shakeDuration,reducedMotion:reduced},hands:hands?.getStats?.()||null,viewMode,companionCameraTransition:{active:viewMode===2&&performance.now()-companionCameraStarted<600,remainingMs:viewMode===2?Math.max(0,600-(performance.now()-companionCameraStarted)):0},ownAvatar:ownAvatar?{avatarId:ownSignature.split(':')[0],variant:Number(ownSignature.split(':')[1]),visible:ownAvatar.root.visible,x:ownAvatar.root.position.x,z:ownAvatar.root.position.z}:null,fairyVisible:world?.appFairy?.visible??null,fairyDeparting:!!fairyDeparture,classroomPresentation:{active:presentingClassroom,reading:readingClassroom,screenBounds:world?.stats.presentationBounds||null},yaw,pitch,dialog:dialog.open,fire,night,avatarModel:ownAvatar?.getModelStats?.()||null,room:currentRoom,transitActive,cinemaDoorOpen,classroomDoorOpen,loadPercent,keyBindings:bindings.snapshot(),pointerLocked:!!document.pointerLockElement,social:social?.getStats()||null,movie:cinemaPlayer?.getStats()||null,classroom:classroomPlayer?.getStats()||null,rig:ownAvatar?.getRigPose()||null,interactions:interactionStats()})};
 $('#stand-up').onclick=()=>social?.action('stand');$('#drop-item').onclick=()=>social?.action('drop');$('#jump-action').onclick=event=>{if(canLook()&&event.detail===0)queueJump();};$('#wave-action').onclick=()=>social?.action('wave');
 $('#jump-action').addEventListener('pointerdown',e=>{if(!canLook())return;physics.touchJump=true;queueJump();e.currentTarget.setPointerCapture(e.pointerId);});
 for(const type of ['pointerup','pointercancel','lostpointercapture'])$('#jump-action').addEventListener(type,()=>{physics.touchJump=false;});
