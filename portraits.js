@@ -4,6 +4,8 @@
   if (!script?.src) return;
   const site = new URL('.', script.src);
   let manifest;
+  let rosterPhotosRequested = false;
+  const apiOrigin = ['127.0.0.1', 'localhost'].includes(location.hostname) ? location.origin : 'https://122.51.44.155';
   function element(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -15,7 +17,7 @@
     if (person.src) {
       const image = element('img');
       image.src = new URL(person.src, site).href;
-      image.alt = person.name + '的博医五期形象照';
+      image.alt = person.name + '的形象照';
       image.width = person.width;
       image.height = person.height;
       image.loading = eager ? 'eager' : 'lazy';
@@ -45,6 +47,31 @@
       row.append(picture(person), copy);
       row.dataset.portraitReady = 'true';
     }
+    if (!rosterPhotosRequested && document.querySelector('.student-roster-row[data-student-id]')) {
+      rosterPhotosRequested = true;
+      void refreshRosterPhotos();
+    }
+  }
+  async function refreshRosterPhotos() {
+    const rows = [...document.querySelectorAll('.student-roster-row[data-student-id]')];
+    let next = 0;
+    async function worker() {
+      while (next < rows.length) {
+        const row = rows[next++], person = manifest.get(row.dataset.studentId);
+        if (!person) continue;
+        try {
+          const response = await fetch(apiOrigin + '/boyi-members/api/public/roster/' + encodeURIComponent(person.id), { credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(12000) });
+          if (!response.ok) continue;
+          const data = await response.json(), avatar = data.item?.profile?.avatar;
+          if (!data.claimed || !data.published || data.item?.rosterId !== person.id || !/^[a-f0-9]{48}$/.test(avatar || '')) continue;
+          const frame = picture({ ...person, src: apiOrigin + '/boyi-members/api/images/' + avatar });
+          const image = frame.querySelector('img');
+          image.addEventListener('error', () => frame.replaceWith(picture(person)), { once: true });
+          row.querySelector(':scope > .boyi-person-portrait')?.replaceWith(frame);
+        } catch { /* Keep the existing photo if the public service is unavailable. */ }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(4, rows.length) }, worker));
   }
   function detail() {
     const main = document.querySelector('main[data-student-id]');

@@ -1,0 +1,24 @@
+.shanhai-hub{--shanhai-ink:#292723;--shanhai-red:#8d202c}
+.shanhai-hub main{max-width:1280px}
+.shanhai-hero{display:grid;grid-template-columns:1fr 1.1fr;align-items:center;gap:56px;padding:36px 0 56px}
+.shanhai-hero h1{font-size:clamp(40px,5.2vw,72px);line-height:1.25;letter-spacing:.01em;margin:20px 0}
+.shanhai-lead{max-width:32em;font-size:18px;line-height:1.9;color:#6d6660}
+.shanhai-hero>img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
+.shanhai-hero-links{display:flex;flex-wrap:wrap;align-items:center;gap:24px;margin-top:28px}
+.shanhai-features{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:0 0 56px}
+.shanhai-features>a{position:relative;display:flex;flex-direction:column;min-width:0;padding:25px 24px 30px;text-decoration:none;border:1px solid #e5ded6;border-radius:10px;background:#fff;color:#292723;transition:border-color .2s ease,transform .2s ease}
+.shanhai-features>a:hover,.shanhai-features>a:focus-visible{border-color:#8d202c;transform:translateY(-3px)}
+.shanhai-features>a>span{color:#9b8775;font-size:12px;letter-spacing:.12em}
+.shanhai-features h2{font-size:21px!important;line-height:1.4;margin:14px 0 10px!important;letter-spacing:0!important}
+.shanhai-features p{color:#756e66;font-size:14px;line-height:1.75;margin:0 0 15px}
+.shanhai-features b{align-self:flex-end;margin-top:auto;color:#8d202c;font-weight:400}
+.shanhai-listen{padding:18px 0 45px}
+.shanhai-podcasts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.shanhai-podcasts>a{border-top:2px solid #8d202c;padding:24px 0;text-decoration:none;color:#292723}
+.shanhai-podcasts span{font-size:12px;color:#8d202c}.shanhai-podcasts h3{font-size:22px;line-height:1.5;margin:12px 0}.shanhai-podcasts p,.shanhai-blog-intro{font-size:15px;line-height:1.9;color:#756e66}
+.shanhai-hub .reflection-list{padding-top:36px}.shanhai-hub :is(#cloud-title,#practice-blog){scroll-margin-top:140px}
+.shanhai-quick{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}.shanhai-quick>a{padding:12px 20px;border:1px solid #e5ded6;border-radius:6px;color:#8d202c;text-decoration:none;background:#fff}
+.practice-nav{display:flex;flex-wrap:wrap;gap:12px 24px}
+@media(max-width:1000px){.shanhai-features{grid-template-columns:repeat(2,minmax(0,1fr))}.shanhai-hero{gap:32px}}
+@media(max-width:700px){.shanhai-hero{grid-template-columns:1fr;gap:28px;padding:12px 0 36px}.shanhai-hero h1{font-size:44px}.shanhai-lead{font-size:16px}.shanhai-hero-links{gap:16px}.shanhai-features{gap:12px;padding-bottom:28px}.shanhai-features>a{padding:18px 16px}.shanhai-features h2{font-size:18px!important}.shanhai-podcasts{grid-template-columns:1fr;gap:0}.shanhai-listen{padding-bottom:12px}.shanhai-quick{gap:8px}.shanhai-quick>a{font-size:14px;padding:10px 14px}}
+@media(prefers-reduced-motion:reduce){.shanhai-features>a{transition:none}.shanhai-features>a:hover,.shanhai-features>a:focus-visible{transform:none}}

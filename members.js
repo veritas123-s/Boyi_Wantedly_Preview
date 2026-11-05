@@ -17,11 +17,18 @@ let securityEpoch=0,profileSequence=0,directoryEpoch=0,accountEpoch=0,management
 let accountReady=false,accountSetupRunning=false,accountHandlersReady=false;
 const privateProfiles=new Map();
 const profilePrefixes=new WeakMap();
-function clearPrivateState(){
- directoryEpoch++;privateProfiles.clear();
+function setPrivateDirectoryOpen(open){
+ const toggle=$('#member-private-refresh'),list=$('#member-private-list');
+ if(toggle){toggle.textContent=open?'收起成员列表':'查看成员列表';toggle.setAttribute('aria-expanded',String(open));}
+ if(list)list.hidden=!open;
+}
+function closePrivateDirectory(){
+ setPrivateDirectoryOpen(false);
+ directoryEpoch++;
  for(const id of ['member-private-list','member-private-view']){const node=document.getElementById(id);if(node)node.replaceChildren();}
  const view=document.getElementById('member-private-view');if(view)view.hidden=true;
 }
+function clearPrivateState(){closePrivateDirectory();privateProfiles.clear();}
 let reviewFilter='pending';
 function clearManagementState(){
  reviewFilter='pending';
@@ -175,7 +182,7 @@ function registerStep(step){registrationStep=step;$$('[data-register-step]').for
 function onboarding(data){
  const host=$('#member-onboarding'),actions=$('#member-onboarding-actions'),list=$('#member-candidates'),editable=data.onboarding.canEdit;
  const approved=data.claims.find(c=>c.status==='approved'),pending=data.claims.find(c=>c.status==='pending'),waiting=!!pending||data.onboarding.state==='claim_pending',rows=data.onboarding.candidates||[];
- host.hidden=editable&&!approved&&!waiting&&!rows.length;$('#member-profile-form').hidden=!editable;$('#member-profile-editor').hidden=!editable;if(!editable)$('#member-profile-editor').open=false;list.replaceChildren();actions.replaceChildren();list.hidden=false;
+ host.hidden=editable&&!approved&&!waiting&&!rows.length;$('#member-profile-form').hidden=!editable;$('#member-profile-editor').hidden=!editable;if($('#member-card-photo'))$('#member-card-photo').hidden=!editable;if(!editable)$('#member-profile-editor').open=false;list.replaceChildren();actions.replaceChildren();list.hidden=false;
  $('h2',host).textContent=approved?'已有主页已关联':editable?'合并已有主页':'先确认你的主页';
  const current=[data.user.name,data.user.className||'班级待补',data.user.cohort?'博医'+data.user.cohort+'期':'期次待补'].join(' · ');
  $('#member-onboarding-note').textContent=approved?'已关联：'+approved.roster_id+'。已有内容已合并到草稿，公开内容以本人发布的版本为准。':waiting?'等待核对，尚未合并。当前账号：'+current+'。申请主页：'+(pending?.roster_id||'待核对')+'。':editable?'可继续维护当前主页；如发现以下同名主页属于本人，可申请核对合并。':rows.length?'找到了同名主页，请核对姓名、班级和期次。':'没有找到同名的已有主页，可以填写自己的个人信息。';
@@ -210,8 +217,8 @@ async function privateDirectory(){
  for(const u of result.items){
   const row=el('tr'),status=el('td','读取中…','member-completeness'),tools=el('td');row.dataset.memberId=u.id;
   row.append(el('th',u.name),el('td',(u.className||'班级待补')+' · '+(u.cohort?'博医'+u.cohort+'期':'不限定期别')),status,tools);row.firstElementChild.scope='row';
-  function renderCompletion(data){const c=completeness(data.profile);status.textContent=c.percent+'% · '+c.done+'/'+c.total;status.title=(c.missing.length?'待完善：'+c.missing.join('、'):'8项资料均已填写')+'；读取于 '+new Date(data.readAt).toLocaleTimeString('zh-CN');status.setAttribute('aria-label',status.textContent+'，'+status.title);}
-  async function readCurrent(){const data=await call('/api/manage/profiles/'+encodeURIComponent(u.id));if(epoch!==directoryEpoch||me?.user?.id!==accountId)return null;data.readAt=Date.now();privateProfiles.set(u.id,data);renderCompletion(data);return data;}
+  function renderCompletion(data){const c=data.completion;status.textContent=c.percent+'% · '+c.done+'/'+c.total;status.title=(c.missing.length?'待完善：'+c.missing.join('、'):'8项资料均已填写')+'；读取于 '+new Date(data.readAt).toLocaleTimeString('zh-CN');status.setAttribute('aria-label',status.textContent+'，'+status.title);}
+  async function readCurrent(){const data=await call('/api/manage/profiles/'+encodeURIComponent(u.id));if(epoch!==directoryEpoch||me?.user?.id!==accountId)return null;const entry={completion:completeness(data.profile),readAt:Date.now()};privateProfiles.set(u.id,entry);renderCompletion(entry);return data;}
   const open=button('查看资料',()=>action(async()=>{const current=await readCurrent();if(!current)return;const view=$('#member-private-view');view.replaceChildren(el('h2','内部查看 · '+current.user.name),el('p','包含不公开的已保存资料。','member-help'));const content=el('div');renderProfile(content,{profile:current.profile,cohort:current.user.cohort,adminGroup:current.user.adminGroup,functionalGroups:current.user.functionalGroups,role:current.user.roleLabel},true);view.append(content);view.hidden=false;view.scrollIntoView({behavior:'smooth',block:'start'});}));open.setAttribute('aria-label','查看'+u.name+'的完整资料（含不公开项）');tools.append(open,button('更新',()=>action(async()=>{status.textContent='读取中…';try{await readCurrent();}catch(error){if(epoch===directoryEpoch)status.textContent='暂不可读';throw error;}},{scroll:false})));body.append(row);
   const cached=privateProfiles.get(u.id);if(cached)renderCompletion(cached);else jobs.push(async()=>{try{await readCurrent();}catch{if(epoch===directoryEpoch)status.textContent='暂不可读';}});
  }
@@ -226,7 +233,7 @@ function showDashboard(data){
  const changedUser=!!me&&me.user.id!==data.user.id,registrationUsername=lastUsername;
  if(changedUser){clearAccountState();$('#member-profile-editor').open=false;if(data.recoveryCode)lastUsername=registrationUsername;}else if(!me){accountEpoch++;managementEpoch++;}
  me=data;csrf=data.csrf||csrf;avatar=data.profile.avatar||'';$('#member-auth').hidden=true;$('#member-dashboard').hidden=false;
- $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);$('#member-published-state').textContent=data.published?'已有公开版本；保存后会立即隐藏改为不公开的项目，其他正文待重新发布后更新。':'主页尚未公开；先补充资料，再预览和公开。';
+ $('#member-hello').textContent=data.profile.name+'，欢迎回来';$('#member-identity').textContent=identityText(data.user);const publishedState=$('#member-published-state');publishedState.hidden=Boolean(data.published);publishedState.textContent=data.published?'':'主页尚未公开；先补充资料，再预览和公开。';
  if(data.user.temporaryTest){$('#member-identity').textContent='Admin · 临时测试管理员 · '+new Date(data.user.testExpiresAt).toLocaleString('zh-CN')+' 到期';}$('#member-password-form').hidden=!!data.user.temporaryTest;$('#member-publish').hidden=!!data.user.temporaryTest;
  buildFields(data.profile,data.user);
  const img=$('#member-avatar-preview');profileAvatar(img,avatar,data.legacyAvatarSrc);const currentPortrait=$('#member-current-portrait');if(currentPortrait){currentPortrait.alt=data.user.name+'的当前肖像';profileAvatar(currentPortrait,avatar,data.legacyAvatarSrc);}$('#member-public-link').href=profileUrl(data.publicId);$('#member-unpublish').hidden=!data.published;
@@ -269,7 +276,20 @@ async function management(){
   }else box.append(el('h3',u.name),el('p',identity,'member-help'));
   const actions=el('div',undefined,'member-actions');const verification=el('label',undefined,'member-check'),toggle=el('input');toggle.type='checkbox';toggle.checked=u.canVerify;verification.append(toggle,el('span','允许协助核对本行政组学生'));if(u.requestedRole==='committee')box.append(verification);
   const update=type=>action(async()=>{if(!current())return;const scrollPosition=window.scrollY;if(['disable','revoke'].includes(type)&&!confirm(type==='disable'?'停用后，该账号不能登录，公开主页也会隐藏。确认停用？':'确认撤销这个账号已核对的身份与管理权限？'))return;await call('/api/manage/members/'+u.id,'POST',{action:type,canVerify:toggle.checked});if(!current()||!await management()||!sessionCurrent())return;const status=$('.member-review-status');if(status)status.textContent=u.name+'：成员状态已更新';requestAnimationFrame(()=>{if(sessionCurrent())window.scrollTo({top:scrollPosition,behavior:'instant'});});},{scroll:false});
-  actions.append(button(u.identityStatus==='verified'?'重新确认身份':'确认身份',()=>update('approve')),button('撤销身份确认',()=>update('revoke')),button(u.disabled?'恢复账号':'停用账号',()=>update(u.disabled?'enable':'disable')));box.dataset.memberId=u.id;box.append(actions);groups[u.identityStatus==='verified'?'verified':'pending'].append(box);
+  actions.append(button(u.identityStatus==='verified'?'重新确认身份':'确认身份',()=>update('approve')),button('撤销身份确认',()=>update('revoke')),button(u.disabled?'恢复账号':'停用账号',()=>update(u.disabled?'enable':'disable')));if(me?.user.siteOwner&&!u.siteOwner&&!u.disabled&&!u.temporaryTest){
+   const issue=button('签发临时恢复码',()=>action(async()=>{
+    if(!current()||!confirm('确认已核对 '+u.name+' 本人身份？签发后旧恢复码将失效。'))return;
+    const result=await call('/api/manage/members/'+u.id+'/recovery','POST',{});
+    if(!current())return;
+    box.querySelector('.member-temporary-recovery')?.remove();
+    const notice=el('div',undefined,'member-temporary-recovery');
+    notice.append(el('p','账号 '+result.username+'。临时恢复码 30 分钟内可使用一次，请私下交给本人。','member-help'),el('code',result.recoveryCode),button('隐藏恢复码',()=>notice.remove()));
+    box.append(notice);
+   },{scroll:false}));
+   actions.append(issue);
+   box.addEventListener('toggle',()=>{if(!box.open)box.querySelector('.member-temporary-recovery')?.remove();});
+  }
+  box.dataset.memberId=u.id;box.append(actions);groups[u.identityStatus==='verified'?'verified':'pending'].append(box);
  }
  if(!data.claims.length)claims.append(el('p','目前没有待核对的主页认领。','member-help'));
  for(const c of data.claims){const box=el('article',undefined,'member-manage-item');box.append(el('h3',c.name),el('p','申请认领五期已有主页 · '+c.rosterId,'member-help'));const actions=el('div',undefined,'member-actions');for(const yes of [true,false])actions.append(button(yes?'确认认领':'暂不通过',()=>action(async()=>{if(!current())return;const scrollPosition=window.scrollY;await call('/api/manage/claims/'+c.id,'POST',{approve:yes});if(!current()||!await management()||!sessionCurrent())return;const status=$('.member-review-status');if(status)status.textContent=c.name+'：认领申请已处理';requestAnimationFrame(()=>{if(sessionCurrent())window.scrollTo({top:scrollPosition,behavior:'instant'});});},{scroll:false})));box.append(actions);claims.append(box);}
@@ -285,7 +305,13 @@ async function setupAccount(){
  $('#member-forgot').addEventListener('click',()=>showAuth('recover'));
  const register=$('#register-form');register.addEventListener('change',()=>{$('#register-cohort').required=register.elements.role.value!=='foundation';});$('#register-back').addEventListener('click',()=>registerStep(Math.max(0,registrationStep-1)));
  register.addEventListener('submit',e=>{e.preventDefault();if(registrationStep<2){registerStep(registrationStep+1);return;}action(async()=>{const get=k=>register.elements[k].value;lastUsername=get('username');const data=await call('/api/register','POST',{username:get('username'),password:get('password'),name:get('name'),role:get('role'),cohort:get('cohort')?Number(get('cohort')):null,className:get('className'),adminGroup:get('adminGroup'),functionalGroups:$$('[name="functionalGroups"]:checked',register).map(n=>n.value),invite:get('invite'),consent:register.elements.consent.checked});showDashboard(data);register.reset();recoveryBox(data.recoveryCode);message('注册成功，请先确认已有的同名主页是否属于你。');});});
- $('#member-private-refresh').addEventListener('click',()=>action(privateDirectory));
+ $('#member-private-refresh').addEventListener('click',event=>{
+  if(event.currentTarget.getAttribute('aria-expanded')==='true'){closePrivateDirectory();return;}
+  action(async()=>{
+   setPrivateDirectoryOpen(true);
+   try{await privateDirectory();}catch(error){clearPrivateState();throw error;}
+  },{scroll:false});
+ });
  $('#login-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{const d=new FormData(e.target),data=await call('/api/login','POST',{username:d.get('username'),password:d.get('password')});e.target.reset();showDashboard(data);message('登录成功。');returnToCottage();});});
  $('#recover-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{const d=new FormData(e.target);lastUsername=d.get('username');const result=await call('/api/recover','POST',{username:d.get('username'),recoveryCode:d.get('recoveryCode'),password:d.get('password')});e.target.reset();showAuth('login');lastUsername=d.get('username');recoveryBox(result.recoveryCode);message('密码已重设，旧恢复码已失效。请保存新恢复码，再用新密码登录。');});});
  $('#member-profile-form').addEventListener('input',()=>{dirty=true;$('#member-save-state').textContent='有未保存的修改';});$('#member-profile-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{await save();message('草稿已保存，未重新发布的正文保持原版本，设为不公开的项目已隐藏。');});});
@@ -298,15 +324,16 @@ async function setupAccount(){
  $('#member-review-close').addEventListener('click',()=>{setReviewOpen(false);$('#member-manage-refresh').focus();});
  for(const button of $$('[data-review-filter]'))button.addEventListener('click',()=>{reviewFilter=button.dataset.reviewFilter;showReviewFilter();});
  $('#member-password-form').addEventListener('submit',e=>{e.preventDefault();action(async()=>{const d=new FormData(e.target);await call('/api/me/password','POST',{oldPassword:d.get('oldPassword'),newPassword:d.get('newPassword')});e.target.reset();me=null;csrf='';dirty=false;showAuth('login');message('密码已修改，请重新登录。');});});
+ $('#member-card-photo')?.addEventListener('click',()=>{if(!me||busy)return;const editor=$('#member-profile-editor');if(editor.hidden)return;editor.open=true;const input=$('#member-avatar-file');input.scrollIntoView({block:'center',behavior:'smooth'});input.click();});
  $('#member-avatar-file').addEventListener('change',e=>action(async()=>{
   const file=e.target.files[0],session=accountEpoch,accountId=me?.user?.id,current=()=>session===accountEpoch&&me?.user?.id===accountId;
   if(!file||!accountId)return;if(file.size>15000000)throw Error('请选择15MB以内的照片。');let bitmap;
   try{
    bitmap=await createImageBitmap(file);if(!current())return;
    const scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();bitmap=null;
-   const data=canvas.toDataURL('image/jpeg',.85).split(',')[1];if(!current())return;const result=await call('/api/me/avatar','POST',{data});if(!current())return;
-   avatar=result.id;const img=$('#member-avatar-preview');profileAvatar(img,avatar,me.legacyAvatarSrc);const currentPortrait=$('#member-current-portrait');if(currentPortrait)profileAvatar(currentPortrait,avatar,me.legacyAvatarSrc);dirty=true;message('头像已上传，请保存草稿；公开版本暂未改变。');
-  }finally{bitmap?.close();}
+   let data;for(const quality of [.85,.72,.6,.48]){data=canvas.toDataURL('image/jpeg',quality).split(',')[1];if(data.length<=800000)break;}if(data.length>800000)throw Error('照片细节过多，请裁剪或缩小后重试。');if(!current())return;const result=await call('/api/me/avatar','POST',{data});if(!current())return;
+   avatar=result.id;const img=$('#member-avatar-preview');profileAvatar(img,avatar,me.legacyAvatarSrc);const currentPortrait=$('#member-current-portrait');if(currentPortrait)profileAvatar(currentPortrait,avatar,me.legacyAvatarSrc);dirty=true;$('#member-save-state').textContent='照片已上传，点击“发布公开版本”后同步更新卡片与个人主页。';message('照片已上传，点击“发布公开版本”后同步更新卡片与个人主页。',{scroll:false});
+  }finally{bitmap?.close();if(current())e.target.value='';}
  }));
  addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
  accountHandlersReady=true;
@@ -317,7 +344,7 @@ function accountSubmissionReady(ready){accountReady=ready;$$('#member-account-co
 async function initializeAccount(){
  if(accountSetupRunning)return;accountSetupRunning=true;accountSubmissionReady(false);message('正在连接账号服务……',{scroll:false});
  try{await setupAccount();accountSubmissionReady(true);}
- catch(error){showAuth('login');accountSubmissionReady(false);message('账号服务暂时不可用，请重新连接。',{scroll:false});const retry=button('重新连接',()=>{void initializeAccount();});retry.id='member-init-retry';$('#member-message').append(' ',retry);}
+ catch(error){showAuth('login');accountSubmissionReady(false);message(error.status===429?'请求过于频繁，请稍后重新连接。':'账号服务暂时不可用，请重新连接。',{scroll:false});const retry=button('重新连接',()=>{void initializeAccount();});retry.id='member-init-retry';$('#member-message').append(' ',retry);}
  finally{accountSetupRunning=false;}
 }
 async function directory(host){const query=new URLSearchParams();const form=$('#member-directory-form');if(form){const d=new FormData(form);if(d.get('cohort'))query.set('cohort',d.get('cohort'));if(d.get('q'))query.set('q',d.get('q'));}const data=await call('/api/public/profiles?'+query);host.replaceChildren();if(!data.items.length){host.append(el('p','这里会展示成员本人确认公开的主页。','member-help'));return;}for(const item of data.items){const a=el('a',undefined,'member-person');a.href=profileUrl(item.id);if(item.rosterId)a.dataset.publicRosterId=item.rosterId;if(item.profile.avatar){const img=el('img');img.src=imageUrl(item.profile.avatar);img.alt='';img.loading='lazy';a.append(img);}a.append(el('span',(item.cohort?'博医'+item.cohort+'期 · ':'')+item.role,'member-help'),el('h3',item.profile.name));if(item.profile.headline||item.profile.major)a.append(el('p',item.profile.headline||item.profile.major));host.append(a);}document.dispatchEvent(new CustomEvent('boyi:public-profile-rendered'));}
