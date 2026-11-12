@@ -1,0 +1,19 @@
+/* Large photo gateways for the cohort and social practice. */
+body.wantedly-subpage .portal-cohort-gateway{position:relative;isolation:isolate;display:flex;align-items:flex-end;overflow:hidden;min-height:510px;margin:48px 0 24px;border-radius:18px;background:#27342b;color:#fff;scroll-margin-top:110px}
+.portal-cohort-gateway::after{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,#101d18de 0%,#101d1890 48%,#101d1820 100%)}
+.portal-cohort-gateway .portal-cohort-photo{position:absolute;z-index:-2;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:50% 46%}
+.portal-cohort-copy{position:relative;max-width:720px;padding:44px}
+.portal-cohort-kicker{font-size:15px;font-weight:600;margin:0 0 22px}
+body.wantedly-subpage .portal-cohort-copy h2{font-size:clamp(36px,4.6vw,64px);line-height:1.2;letter-spacing:0;margin:0 0 20px;color:inherit}
+.portal-cohort-copy>p:not(.portal-cohort-kicker){max-width:440px;font-size:16px;line-height:1.8;margin:0 0 26px;color:#fff}
+body.wantedly-subpage .portal-cohort-cta{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:48px;padding:10px 20px;border-radius:999px;background:#fff;color:#79212d;font-size:15px;font-weight:650;text-decoration:none;transition:background .18s,color .18s}
+body.wantedly-subpage .portal-cohort-cta:hover{background:#8d202c;color:#fff}
+.portal-cohort-cta:focus-visible{outline:3px solid #fff;outline-offset:5px}
+.portal-cohort-cta svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.portal-gateway-anchor{position:absolute;top:0;scroll-margin-top:110px}
+.portal-cohort-details #window-entries,.portal-cohort-details #window-groups{scroll-margin-top:110px}
+body.wantedly-subpage .portal-gateway-copy:has(.portal-practice-theme){max-width:100%;width:100%}
+body.wantedly-subpage .portal-gateway-copy h1.portal-practice-theme{font-size:clamp(32px,4.2vw,58px);line-height:1.3;white-space:normal;max-width:100%;margin-bottom:20px}
+.portal-practice-theme>span,.portal-practice-theme .rm-title-base>span{display:block}
+@media(max-width:760px){body.wantedly-subpage .portal-cohort-gateway{min-height:430px;margin-top:32px;border-radius:14px}.portal-cohort-copy{padding:24px}.portal-cohort-kicker{font-size:13px;margin-bottom:16px}body.wantedly-subpage .portal-cohort-copy h2{font-size:clamp(30px,8vw,44px)}.portal-cohort-copy>p:not(.portal-cohort-kicker){font-size:15px;max-width:290px;margin-bottom:20px}body.wantedly-subpage .portal-gateway-copy h1.portal-practice-theme{font-size:clamp(23px,6vw,40px);line-height:1.45}.portal-cohort-gateway .portal-cohort-photo{object-position:53% 50%}}
+@media(prefers-reduced-motion:reduce){.portal-cohort-cta{transition:none}}
